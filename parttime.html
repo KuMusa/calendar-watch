@@ -1201,6 +1201,21 @@ function withTimeout(promise, ms, label) {
      * ============================================================ */
     (async function init() {
         console.log('[兼职] 开始初始化');
+                // === 方案B：仅顶层窗口检查登录 ===
+        if (window.top === window.self) {
+            try {
+                const { data: { session } } = await supa.auth.getSession();
+                if (!session) {
+                    window.location.href = 'index.html';
+                    return;
+                }
+            } catch (e) {
+                console.warn('验证登录态失败', e);
+                window.location.href = 'index.html';
+                return;
+            }
+        }
+        // ==============================
         try {
             console.log('[兼职] 步骤1：检查 SDK');
             if (!window.supabase || typeof window.supabase.createClient !== 'function') {
