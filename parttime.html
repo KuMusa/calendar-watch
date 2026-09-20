@@ -4,12 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>兼职签到表 · 云同步版</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script>
-        // 备用 CDN：jsdelivr 加载失败时自动切换
-        if (typeof window.supabase === 'undefined') {
-            document.write('<scr' + 'ipt src="https://unpkg.com/@supabase/supabase-js@2"><\/scr' + 'ipt>');
-        }
+    // 备用 CDN：unpkg 加载失败时自动切换
+    if (typeof window.supabase === 'undefined') {
+        document.write('<scr' + 'ipt src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"><\/scr' + 'ipt>');
+    }
     </script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
