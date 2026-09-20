@@ -3017,6 +3017,21 @@ function bind() {
  * ============================================================ */
 async function init() {
   const t = new Date();
+     // === 方案B：仅顶层窗口检查登录 ===
+    if (window.top === window.self) {
+        try {
+            const { data: { session } } = await supa.auth.getSession();
+            if (!session) {
+                window.location.href = 'index.html';
+                return;
+            }
+        } catch (e) {
+            console.warn('验证登录态失败', e);
+            window.location.href = 'index.html';
+            return;
+        }
+    }
+    // ==============================
   state.view.y = t.getFullYear();
   state.view.m = t.getMonth();
   state.selected = dk(t);
