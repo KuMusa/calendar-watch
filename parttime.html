@@ -249,21 +249,7 @@
 </div>
 
 <script>
-    // === 自动强制登录检查 ===
-(async function checkAuthBeforeInit() {
-  try {
-    const { data: { session } } = await supa.auth.getSession();
-    if (!session) {
-      // 未登录，强制跳回首页登录
-      window.location.href = 'index.html'; 
-      return;
-    }
-  } catch (e) {
-    console.warn('验证登录态失败', e);
-    window.location.href = 'index.html';
-    return;
-  }
-})();
+
 // ========================
 /* ============================================================
  *  ★★★ Supabase 配置 —— 只需要改下面两行 ★★★
