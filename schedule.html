@@ -1506,21 +1506,7 @@ async function save() {
       );
       if (error) throw error;
     }
-   // === 自动强制登录检查 ===
-(async function checkAuthBeforeInit() {
-  try {
-    const { data: { session } } = await supa.auth.getSession();
-    if (!session) {
-      // 未登录，强制跳回首页登录
-      window.location.href = 'index.html'; 
-      return;
-    }
-  } catch (e) {
-    console.warn('验证登录态失败', e);
-    window.location.href = 'index.html';
-    return;
-  }
-})();
+ 
 // ========================
 
     await supa.from('schedule_notes').delete().neq('id', '');
