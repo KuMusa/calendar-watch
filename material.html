@@ -1,0 +1,1646 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#eef2f9">
+<title>材料成本单</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                 "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    font-size: 13px; line-height: 1.4; color: #1a1f36;
+    background: radial-gradient(900px 500px at 4% -6%, #e4ecff 0%, transparent 55%),
+                radial-gradient(800px 400px at 98% -2%, #ffe8f1 0%, transparent 52%), #eef2f9;
+    -webkit-font-smoothing: antialiased;
+  }
+  button, input, select, textarea { font-family: inherit; }
+  button { cursor: pointer; border: none; background: none; color: inherit; }
+  input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+
+  .app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden; }
+
+  /* ============ 顶栏 ============ */
+  .topbar {
+    flex-shrink: 0;
+    height: 48px;
+    display: flex; align-items: center; gap: 8px;
+    padding: 0 12px;
+    background: #fff;
+    border-bottom: 1px solid #e9edf5;
+    box-shadow: 0 1px 8px rgba(26,31,54,.05);
+  }
+  .brand {
+    font-size: 14px; font-weight: 800;
+    display: flex; align-items: center; gap: 6px;
+    flex-shrink: 0; padding-right: 10px;
+    border-right: 1px solid #eef2f9;
+  }
+  .brand .logo-sq {
+    width: 24px; height: 24px; border-radius: 7px;
+    background: linear-gradient(140deg, #5b86ff, #3b66e6);
+    display: grid; place-items: center;
+    font-size: 13px; color: #fff;
+    box-shadow: 0 3px 8px rgba(79,124,255,.3);
+  }
+
+  .order-wrap {
+    display: flex; align-items: center; gap: 4px;
+    flex-shrink: 0;
+  }
+  .order-label {
+    font-size: 11.5px; font-weight: 700; color: #8b93a7;
+    letter-spacing: .04em;
+  }
+  .order-input {
+    height: 32px; padding: 0 10px;
+    border: 1.5px solid #e9edf5; border-radius: 8px;
+    background: #fafbfe; color: #1a1f36;
+    font-size: 13px; font-weight: 700;
+    outline: none; width: 180px;
+    transition: .15s;
+  }
+  .order-input:focus { border-color: #4f7cff; background: #fff;
+                       box-shadow: 0 0 0 3px rgba(79,124,255,.1); }
+  .order-input::placeholder { color: #b8bfcd; font-weight: 500; }
+
+  .order-select {
+    height: 32px; padding: 0 8px;
+    border: 1.5px solid #e9edf5; border-radius: 8px;
+    background: #fff; color: #4a5368;
+    font-size: 12px; font-weight: 600;
+    outline: none; max-width: 130px; cursor: pointer;
+  }
+  .order-select:focus { border-color: #4f7cff; }
+
+  .spacer { flex: 1; }
+
+  .btn {
+    height: 32px; padding: 0 12px; border-radius: 8px;
+    border: 1.5px solid #e9edf5; background: #fff;
+    font-size: 12px; font-weight: 700; color: #4a5368;
+    display: inline-flex; align-items: center; gap: 4px;
+    white-space: nowrap; transition: .15s;
+  }
+  .btn:hover { background: #f2f5ff; border-color: #cfdaff; color: #4f7cff; }
+  .btn:active { transform: scale(.97); }
+  .btn.primary {
+    background: linear-gradient(140deg, #5b86ff, #3b66e6);
+    color: #fff; border-color: transparent;
+    box-shadow: 0 3px 8px rgba(79,124,255,.26);
+  }
+  .btn.primary:hover { background: linear-gradient(140deg, #4a76ff, #3357d5); color: #fff; }
+  .btn.danger { color: #e8455a; border-color: #ffd7db; }
+  .btn.danger:hover { background: #fff5f6; border-color: #ffb8c2; }
+  .btn.ghost { background: transparent; border-color: transparent; }
+  .btn.ghost:hover { background: #f2f5ff; }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .btn:disabled:hover { background: #fff; border-color: #e9edf5; color: #4a5368; }
+
+  .sync-status {
+    font-size: 11px; font-weight: 700;
+    padding: 3px 10px; border-radius: 999px;
+    background: #f0fdf8; color: #0a8f66;
+    border: 1px solid #c9eddc;
+    display: inline-flex; align-items: center; gap: 4px;
+    flex-shrink: 0;
+  }
+  .sync-status.err { background: #fff5f6; color: #e8455a; border-color: #ffd7db; }
+  .sync-status .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: currentColor; animation: blink 1.6s infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:.35;} }
+
+  /* ============ 主区 ============ */
+  .main {
+    flex: 1; min-height: 0;
+    display: flex; gap: 8px;
+    padding: 8px;
+  }
+
+  /* ============ 材料库 ============ */
+  .lib {
+    width: 360px; flex-shrink: 0;
+    background: #fff; border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(26,31,54,.06);
+    display: flex; flex-direction: column;
+    min-height: 0; overflow: hidden;
+  }
+  .lib-head {
+    padding: 10px;
+    border-bottom: 1px solid #f1f4fa;
+    display: flex; gap: 6px; align-items: center;
+    flex-shrink: 0;
+  }
+  .lib-search {
+    flex: 1; height: 34px;
+    padding: 0 12px;
+    border: 1.5px solid #e9edf5; border-radius: 8px;
+    font-size: 13px; font-weight: 500;
+    outline: none; transition: .15s;
+    background: #fafbfe;
+    min-width: 0;
+  }
+  .lib-search:focus { border-color: #4f7cff; background: #fff;
+                      box-shadow: 0 0 0 3px rgba(79,124,255,.1); }
+  .lib-search::placeholder { color: #b8bfcd; }
+
+  .lib-add-btn {
+    height: 34px; padding: 0 12px;
+    border-radius: 8px;
+    background: linear-gradient(140deg, #16c58c, #0a8f66);
+    color: #fff; font-size: 12.5px; font-weight: 700;
+    display: inline-flex; align-items: center; gap: 3px;
+    white-space: nowrap; flex-shrink: 0;
+    box-shadow: 0 3px 8px rgba(16,185,129,.24);
+    transition: .15s;
+  }
+  .lib-add-btn:hover { transform: translateY(-1px); box-shadow: 0 5px 12px rgba(16,185,129,.32); }
+
+  .lib-tabs {
+    display: flex; flex-wrap: wrap; gap: 4px;
+    padding: 8px 10px 4px;
+    flex-shrink: 0;
+  }
+  .lib-tab {
+    padding: 4px 10px; border-radius: 6px;
+    font-size: 12px; font-weight: 700;
+    color: #6b7280; background: #f8fafd;
+    transition: .15s;
+  }
+  .lib-tab:hover { background: #eef3ff; color: #4f7cff; }
+  .lib-tab.active {
+    background: linear-gradient(140deg, #5b86ff, #3b66e6);
+    color: #fff;
+    box-shadow: 0 2px 6px rgba(79,124,255,.24);
+  }
+
+  /* 已选提示条 */
+  .lib-selbar {
+    display: none;
+    align-items: center; gap: 8px;
+    padding: 8px 10px;
+    background: linear-gradient(135deg, #eef3ff, #f5f8ff);
+    border-top: 1px solid #e9edf5;
+    border-bottom: 1px solid #e9edf5;
+    font-size: 12px; font-weight: 700; color: #4f7cff;
+    flex-shrink: 0;
+  }
+  .lib-selbar.show { display: flex; }
+  .lib-selbar b {
+    background: #5b86ff; color: #fff;
+    padding: 1px 8px; border-radius: 999px;
+    font-size: 11px; margin: 0 2px;
+  }
+  .lib-selbar .btn { height: 28px; padding: 0 10px; font-size: 12px; }
+  .lib-selbar .btn.primary { margin-left: auto; }
+
+  .lib-body {
+    flex: 1; min-height: 0; overflow-y: auto;
+    padding: 8px 6px 10px;
+  }
+  .lib-body::-webkit-scrollbar { width: 6px; }
+  .lib-body::-webkit-scrollbar-thumb { background: #dde3ef; border-radius: 3px; }
+
+  .lib-group { margin-bottom: 10px; }
+  .lib-group-title {
+    font-size: 11px; font-weight: 800;
+    color: #8b93a7; letter-spacing: .06em;
+    text-transform: uppercase;
+    padding: 6px 8px 4px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .lib-group-title::after {
+    content: ''; flex: 1; height: 1px;
+    background: #eef2f9;
+  }
+
+  .m-item {
+    display: grid;
+    grid-template-columns: 20px minmax(0,1fr) 46px 60px 24px;
+    gap: 6px; align-items: center;
+    padding: 5px 6px;
+    border-radius: 8px;
+    transition: .14s;
+    font-size: 12px;
+  }
+  .m-item:hover { background: #f8fbff; }
+  .m-item.selected { background: #eef3ff; }
+
+  /* 材料勾选框 */
+  .m-check {
+    width: 18px; height: 18px; border-radius: 5px;
+    border: 2px solid #cfd6e6; background: #fff;
+    display: grid; place-items: center;
+    transition: .14s; padding: 0;
+    cursor: pointer; flex-shrink: 0;
+    justify-self: center;
+  }
+  .m-check:hover { border-color: #4f7cff; transform: scale(1.08); }
+  .m-check.on {
+    background: linear-gradient(140deg, #5b86ff, #3b66e6);
+    border-color: #3b66e6;
+    box-shadow: 0 2px 6px rgba(79,124,255,.32);
+  }
+  .m-check.on::after {
+    content: ''; width: 4px; height: 8px;
+    border: solid #fff; border-width: 0 2px 2px 0;
+    transform: rotate(45deg) translate(-1px, -2px);
+  }
+
+  .m-main {
+    min-width: 0;
+    cursor: pointer;
+  }
+  .m-name {
+    font-weight: 700; color: #1a1f36;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-size: 12.5px;
+  }
+  .m-name small {
+    color: #8b93a7; font-weight: 500;
+    font-size: 11px; margin-left: 4px;
+  }
+  .m-unit {
+    font-size: 11px; color: #8b93a7; font-weight: 600;
+    text-align: center;
+  }
+  .m-price {
+    font-size: 12px; font-weight: 800;
+    color: #e8455a; text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .m-price::before { content: '¥'; font-size: 10px; opacity: .7; margin-right: 1px; }
+  .m-add {
+    width: 22px; height: 22px; border-radius: 6px;
+    display: grid; place-items: center;
+    background: #eef3ff; color: #4f7cff;
+    font-size: 14px; font-weight: 800;
+    transition: .15s;
+    flex-shrink: 0;
+    justify-self: center;
+  }
+  .m-add:hover {
+    background: linear-gradient(140deg, #5b86ff, #3b66e6);
+    color: #fff;
+    box-shadow: 0 2px 6px rgba(79,124,255,.3);
+  }
+
+  .lib-empty {
+    padding: 30px 20px; text-align: center;
+    color: #b8bfcd; font-size: 12px; font-weight: 500;
+  }
+  .lib-empty .ico { font-size: 24px; display: block; margin-bottom: 6px; opacity: .5; }
+
+  /* ============ 成本清单 ============ */
+  .list {
+    flex: 1; min-width: 0;
+    background: #fff; border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(26,31,54,.06);
+    display: flex; flex-direction: column;
+    min-height: 0; overflow: hidden;
+  }
+
+  .list-head {
+    padding: 12px 14px;
+    border-bottom: 1px solid #f1f4fa;
+    display: flex; flex-direction: column; gap: 8px;
+    flex-shrink: 0;
+  }
+  .list-head-row {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .list-title {
+    font-size: 12px; font-weight: 800;
+    color: #8b93a7; letter-spacing: .06em;
+    text-transform: uppercase;
+    flex-shrink: 0;
+  }
+  .list-order-display {
+    flex: 1; min-width: 0;
+    font-size: 15px; font-weight: 800;
+    color: #0a8f66;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    padding: 6px 12px;
+    background: #f0fdf8;
+    border: 1.5px dashed #c9eddc;
+    border-radius: 8px;
+    font-variant-numeric: tabular-nums;
+  }
+  .list-order-display.empty { color: #b8bfcd; background: #fafbfe; border-color: #e9edf5; }
+
+  .list-note-input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1.5px solid #e9edf5; border-radius: 8px;
+    font-size: 12px; font-weight: 500;
+    color: #4a5368; outline: none;
+    background: #fafbfe; transition: .15s;
+    resize: none;
+    line-height: 1.5;
+  }
+  .list-note-input:focus { border-color: #4f7cff; background: #fff;
+                           box-shadow: 0 0 0 3px rgba(79,124,255,.1); }
+
+  .list-body {
+    flex: 1; min-height: 0; overflow-y: auto;
+    padding: 6px;
+  }
+  .list-body::-webkit-scrollbar { width: 7px; }
+  .list-body::-webkit-scrollbar-thumb { background: #dde3ef; border-radius: 4px; }
+
+  .list-row-header {
+    display: grid;
+    grid-template-columns: minmax(0,1.6fr) 46px 76px 76px 84px 26px;
+    gap: 6px; align-items: center;
+    padding: 8px 10px;
+    background: #f6f8fd;
+    border-radius: 8px;
+    font-size: 10.5px; font-weight: 800;
+    color: #4a5368; letter-spacing: .06em;
+    text-transform: uppercase;
+    position: sticky; top: 0;
+    z-index: 2;
+    margin-bottom: 4px;
+  }
+  .list-row-header span:nth-child(3),
+  .list-row-header span:nth-child(4),
+  .list-row-header span:nth-child(5) { text-align: right; }
+
+  .list-row {
+    display: grid;
+    grid-template-columns: minmax(0,1.6fr) 46px 76px 76px 84px 26px;
+    gap: 6px; align-items: center;
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    transition: .14s;
+    border-bottom: 1px solid #f6f8fd;
+  }
+  .list-row:hover { background: #f8fbff; }
+  .list-row:last-child { border-bottom: none; }
+
+  .lr-name {
+    font-weight: 700; color: #1a1f36;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    min-width: 0;
+  }
+  .lr-name small {
+    display: block;
+    font-size: 11px; font-weight: 500;
+    color: #8b93a7;
+    overflow: hidden; text-overflow: ellipsis;
+    margin-top: 1px;
+  }
+  .lr-unit {
+    font-size: 11px; color: #8b93a7;
+    font-weight: 600; text-align: center;
+  }
+  .lr-input {
+    width: 100%; height: 30px;
+    padding: 0 8px; text-align: right;
+    border: 1.5px solid transparent;
+    border-radius: 6px;
+    font-size: 12.5px; font-weight: 700;
+    color: #1a1f36; background: #fbfcfe;
+    outline: none; transition: .15s;
+    font-variant-numeric: tabular-nums;
+  }
+  .lr-input:hover { background: #f2f5ff; }
+  .lr-input:focus {
+    border-color: #4f7cff; background: #fff;
+    box-shadow: 0 0 0 3px rgba(79,124,255,.1);
+  }
+  .lr-price { color: #e8455a; }
+  .lr-qty { color: #4f7cff; }
+
+  .lr-subtotal {
+    text-align: right;
+    font-size: 13px; font-weight: 800;
+    color: #0a8f66;
+    font-variant-numeric: tabular-nums;
+    padding-right: 4px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .lr-del {
+    width: 22px; height: 22px; border-radius: 6px;
+    display: grid; place-items: center;
+    color: #cdd4e2; font-size: 14px;
+    transition: .14s; flex-shrink: 0;
+  }
+  .lr-del:hover { background: #ffe9eb; color: #e8455a; }
+
+  .list-empty {
+    padding: 50px 20px; text-align: center;
+    color: #b8bfcd; font-size: 13px; font-weight: 500;
+  }
+  .list-empty .ico { font-size: 32px; display: block; margin-bottom: 8px; opacity: .4; }
+  .list-empty .hint { font-size: 11.5px; color: #cdd4e2; margin-top: 6px; }
+
+  .list-foot {
+    flex-shrink: 0;
+    padding: 12px 14px;
+    border-top: 1px solid #f1f4fa;
+    background: #fbfcfe;
+    display: flex; align-items: center; gap: 12px;
+    flex-wrap: wrap;
+  }
+  .stat-block {
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .stat-label {
+    font-size: 10.5px; font-weight: 700;
+    color: #8b93a7; letter-spacing: .04em;
+    text-transform: uppercase;
+  }
+  .stat-value {
+    font-size: 16px; font-weight: 800;
+    color: #1a1f36;
+    font-variant-numeric: tabular-nums;
+  }
+  .stat-value.green { color: #0a8f66; }
+  .list-foot .spacer { flex: 1; }
+
+  /* ============ 添加材料弹窗 ============ */
+  .modal-backdrop {
+    position: fixed; inset: 0; z-index: 300;
+    background: rgba(26,31,54,.42);
+    -webkit-backdrop-filter: blur(3px);
+    backdrop-filter: blur(3px);
+    display: none; align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  .modal-backdrop.show { display: flex; }
+
+  .modal-panel {
+    background: #fff; border-radius: 16px;
+    width: min(440px, 100%);
+    max-height: 90vh;
+    display: flex; flex-direction: column;
+    box-shadow: 0 24px 60px rgba(26,31,54,.28);
+    overflow: hidden;
+    animation: popIn .22s cubic-bezier(.2,.9,.3,1.15);
+  }
+  @keyframes popIn {
+    from { transform: translateY(12px) scale(.97); opacity: 0; }
+    to { transform: none; opacity: 1; }
+  }
+
+  .modal-head {
+    padding: 16px 18px 12px;
+    border-bottom: 1px solid #f1f4fa;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .modal-title {
+    font-size: 15px; font-weight: 800; color: #1a1f36;
+  }
+  .modal-close {
+    margin-left: auto;
+    width: 28px; height: 28px; border-radius: 8px;
+    display: grid; place-items: center;
+    color: #b8bfcd; font-size: 20px; line-height: 1;
+    transition: .14s;
+  }
+  .modal-close:hover { background: #ffe9eb; color: #e8455a; }
+
+  .modal-body {
+    flex: 1; min-height: 0; overflow-y: auto;
+    padding: 14px 18px 8px;
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: 70px minmax(0,1fr);
+    gap: 10px 12px;
+    align-items: center;
+  }
+  .form-grid label {
+    font-size: 12.5px; font-weight: 700;
+    color: #4a5368;
+    text-align: right;
+  }
+  .form-grid label .req {
+    color: #e8455a; margin-left: 2px;
+  }
+  .form-grid input,
+  .form-grid select {
+    width: 100%;
+    height: 38px; padding: 0 12px;
+    border: 1.5px solid #e9edf5; border-radius: 8px;
+    font-size: 13px; font-weight: 600;
+    color: #1a1f36; background: #fafbfe;
+    outline: none; transition: .15s;
+  }
+  .form-grid input:focus,
+  .form-grid select:focus {
+    border-color: #4f7cff; background: #fff;
+    box-shadow: 0 0 0 3px rgba(79,124,255,.1);
+  }
+  .form-grid input::placeholder { color: #b8bfcd; font-weight: 500; }
+
+  .modal-foot {
+    padding: 12px 18px 16px;
+    border-top: 1px solid #f1f4fa;
+    background: #fbfcfe;
+    display: flex; gap: 8px; justify-content: flex-end;
+  }
+  .modal-foot .btn { height: 36px; padding: 0 16px; font-size: 13px; }
+
+  /* ============ 手机端 ============ */
+  @media (max-width: 768px) {
+    html, body { height: auto; min-height: 100%; overflow: auto; }
+    .app { height: auto; min-height: 100dvh; overflow: visible; }
+
+    .topbar {
+      position: sticky; top: 0; z-index: 50;
+      height: auto; padding: 8px;
+      padding-top: calc(8px + env(safe-area-inset-top));
+      flex-wrap: wrap; gap: 6px;
+    }
+    .brand { padding-right: 6px; font-size: 13px; }
+    .brand .logo-sq { width: 22px; height: 22px; font-size: 12px; }
+    .order-wrap { width: 100%; order: 10; }
+    .order-input { flex: 1; height: 40px; font-size: 15px; }
+    .order-select { height: 40px; font-size: 13px; max-width: 110px; }
+    .sync-status { display: none; }
+    .btn { height: 40px; padding: 0 12px; font-size: 13px; }
+    .topbar .btn span.lbl { display: none; }
+
+    .main {
+      display: block; padding: 6px;
+      padding-bottom: calc(20px + env(safe-area-inset-bottom));
+    }
+
+    .lib {
+      width: 100%; margin-bottom: 8px;
+      display: flex;
+    }
+    .lib-body { max-height: 340px; }
+    .lib-search { height: 40px; font-size: 15px; }
+    .lib-add-btn { height: 40px; padding: 0 14px; font-size: 13px; }
+    .lib-tab { padding: 6px 12px; font-size: 13px; }
+
+    .m-item {
+      grid-template-columns: 24px minmax(0,1fr) 60px 30px;
+      padding: 10px 6px;
+      gap: 6px;
+    }
+    .m-check { width: 22px; height: 22px; border-radius: 6px; }
+    .m-unit { display: none; }
+    .m-name { font-size: 14px; }
+    .m-price { font-size: 13px; }
+    .m-add { width: 28px; height: 28px; font-size: 16px; }
+
+    .lib-selbar { padding: 10px; font-size: 13.5px; }
+    .lib-selbar .btn { height: 34px; font-size: 13px; }
+
+    .list { width: 100%; display: flex; }
+
+    .list-head { padding: 12px; }
+    .list-order-display { font-size: 16px; }
+    .list-note-input { font-size: 14px; padding: 10px 12px; }
+
+    .list-body { padding: 6px 4px; }
+    .list-row-header { display: none; }
+
+    .list-row {
+      grid-template-columns: minmax(0,1fr) 66px 32px;
+      grid-template-areas:
+        "name price del"
+        "name qty del"
+        "sub sub sub";
+      row-gap: 6px; column-gap: 8px;
+      padding: 12px 10px;
+      background: #fafbfe;
+      border: 1px solid #eef2f9;
+      border-radius: 12px;
+      margin-bottom: 8px;
+      align-items: center;
+    }
+    .list-row:hover { background: #fafbfe; }
+    .list-row .lr-name { grid-area: name; font-size: 14.5px; white-space: normal;
+                          line-height: 1.35; }
+    .list-row .lr-name small { font-size: 12px; margin-top: 3px; }
+    .list-row .lr-unit { display: none; }
+    .list-row .lr-input.lr-price {
+      grid-area: price; height: 36px; font-size: 14px;
+      background: #fff; border-color: #e9edf5;
+    }
+    .list-row .lr-input.lr-qty {
+      grid-area: qty; height: 36px; font-size: 14px;
+      background: #fff; border-color: #e9edf5;
+    }
+    .list-row .lr-subtotal {
+      grid-area: sub; text-align: right;
+      font-size: 15px; padding: 5px 0 0;
+      border-top: 1px dashed #e9edf5; margin-top: 2px;
+    }
+    .list-row .lr-del {
+      grid-area: del; width: 32px; height: 32px;
+      font-size: 18px; background: #fff;
+      border: 1px solid #e9edf5;
+      justify-self: end; align-self: start;
+    }
+
+    .list-foot { padding: 14px 12px; gap: 8px; }
+    .stat-value { font-size: 15px; }
+    .stat-block { flex: 1; min-width: 80px; }
+    .list-foot .spacer { display: none; }
+    .list-foot .btn { flex: 1; justify-content: center; }
+
+    .modal-panel { width: 100%; max-width: 100%; border-radius: 20px 20px 0 0;
+                   max-height: 92vh; }
+    .modal-head { padding: 18px 18px 14px; }
+    .modal-title { font-size: 16px; }
+    .modal-body { padding: 16px 18px 8px; }
+    .form-grid { gap: 12px 10px; }
+    .form-grid input, .form-grid select { height: 44px; font-size: 15px; }
+    .modal-foot { padding: 14px 18px; padding-bottom: calc(14px + env(safe-area-inset-bottom)); }
+    .modal-foot .btn { height: 44px; font-size: 14px; flex: 1; justify-content: center; }
+  }
+  @media (max-width: 380px) {
+    .brand span.txt { display: none; }
+    .order-select { max-width: 90px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo-sq">🧵</span>
+      <span class="txt">材料成本单</span>
+    </div>
+
+    <div class="order-wrap">
+      <span class="order-label">单号</span>
+      <input class="order-input" id="orderInput" type="text"
+             placeholder="输入或选择单号…" maxlength="30" autocomplete="off">
+      <select class="order-select" id="orderSelect" title="历史单号">
+        <option value="">历史…</option>
+      </select>
+    </div>
+
+    <span class="spacer"></span>
+
+    <div class="sync-status" id="syncStatus">
+      <span class="dot"></span>
+      <span id="syncText">连接中…</span>
+    </div>
+
+    <button class="btn" id="importBtn" title="从文件导入">
+      📥 <span class="lbl">导入</span>
+    </button>
+    <button class="btn" id="exportBtn" title="导出为 JSON">
+      📤 <span class="lbl">导出</span>
+    </button>
+    <input type="file" id="importFile" accept="application/json,.json" hidden>
+  </header>
+
+  <div class="main">
+
+    <!-- ==================== 材料库 ==================== -->
+    <aside class="lib">
+      <div class="lib-head">
+        <input class="lib-search" id="libSearch" type="text"
+               placeholder="搜索材料 / 规格…" autocomplete="off">
+        <button class="lib-add-btn" id="libAddBtn" title="添加新材料">＋ 材料</button>
+      </div>
+      <div class="lib-tabs" id="libTabs"></div>
+
+      <div class="lib-selbar" id="libSelbar">
+        已选 <b id="selCount">0</b> 项
+        <button class="btn" id="clearSelBtn">清除</button>
+        <button class="btn primary" id="addSelectedBtn">加入清单</button>
+      </div>
+
+      <div class="lib-body" id="libBody"></div>
+    </aside>
+
+    <!-- ==================== 成本清单 ==================== -->
+    <section class="list">
+      <div class="list-head">
+        <div class="list-head-row">
+          <span class="list-title">清单</span>
+          <div class="list-order-display empty" id="listOrderDisplay">未填单号</div>
+        </div>
+        <textarea class="list-note-input" id="listNoteInput"
+                  placeholder="备注（尺寸、客户、日期等）" rows="2" maxlength="200"></textarea>
+      </div>
+
+      <div class="list-body" id="listBody"></div>
+
+      <div class="list-foot">
+        <div class="stat-block">
+          <span class="stat-label">材料成本合计</span>
+          <span class="stat-value green" id="totalDisplay">¥0.00</span>
+        </div>
+        <div class="stat-block">
+          <span class="stat-label">项数 / 件数</span>
+          <span class="stat-value" id="countDisplay">0 / 0</span>
+        </div>
+        <div class="spacer"></div>
+        <button class="btn danger" id="clearListBtn">清空清单</button>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<!-- ==================== 添加材料弹窗 ==================== -->
+<div class="modal-backdrop" id="addMatModal">
+  <div class="modal-panel">
+    <div class="modal-head">
+      <span class="modal-title">＋ 添加新材料</span>
+      <button class="modal-close" id="addMatClose">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <label>分类<span class="req">*</span></label>
+        <input id="newMatStage" type="text" placeholder="如：剪纸、上色、自定义" maxlength="20" list="stageList">
+        <datalist id="stageList"></datalist>
+
+        <label>名称<span class="req">*</span></label>
+        <input id="newMatName" type="text" placeholder="如：和纸、钢丝" maxlength="30">
+
+        <label>规格</label>
+        <input id="newMatSpec" type="text" placeholder="如：国产、2mm×2m" maxlength="30">
+
+        <label>单位</label>
+        <input id="newMatUnit" type="text" placeholder="如：张、m、根、个" maxlength="10">
+
+        <label>单价</label>
+        <input id="newMatPrice" type="number" min="0" step="0.01" placeholder="0.00" inputmode="decimal">
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" id="addMatCancel">取消</button>
+      <button class="btn primary" id="addMatConfirm">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+ *  Supabase 配置
+ * ============================================================ */
+const SUPABASE_URL = 'https://evwiybzodraxzxrjsrsrs.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_OWCPSt65AWrsBXtTBhi1Zg_5oX1zeM6';
+/* 如果上面的 URL 不对，请替换成你自己的 */
+const supa = window.supabase.createClient(
+  SUPABASE_URL.replace('evwiybzodraxzxrjsrsrs', 'evwiybzodraxzxrjosrs'),
+  SUPABASE_PUBLISHABLE_KEY
+);
+
+const LOCAL_ORDERS_KEY = 'material-orders-v1';
+const LOCAL_CUSTOM_KEY = 'material-custom-materials-v1';
+
+/* ============================================================
+ *  内置材料库（来自你的成本单）
+ * ============================================================ */
+const BUILTIN_MATERIALS = [
+  { stage: '剪纸', name: '和纸', spec: '国产', unit: '张', price: 7.5 },
+  { stage: '剪纸', name: '和纸', spec: '进口', unit: '张', price: 9.5 },
+  { stage: '剪纸', name: '和纸', spec: '绿色国产', unit: '张', price: 8.5 },
+  { stage: '剪纸', name: '覆背纸', spec: '1m宽', unit: 'm', price: 1 },
+  { stage: '剪纸', name: '绵纸', spec: '1m宽', unit: 'm', price: 2.5 },
+  { stage: '剪纸', name: '欧根纱', spec: '1.5m宽', unit: 'm', price: 10 },
+  { stage: '剪纸', name: '韩国纱', spec: '1.5m宽', unit: 'm', price: 7 },
+  { stage: '剪纸', name: '钻石纱', spec: '1.5m宽', unit: 'm', price: 5 },
+  { stage: '剪纸', name: '蕾丝布', spec: '1.5m宽', unit: 'm', price: 26 },
+  { stage: '剪纸', name: '珠光褶皱纱', spec: '1.5m宽', unit: 'm', price: 13 },
+  { stage: '剪纸', name: 'EVA', spec: '1mm', unit: '㎡', price: 4 },
+  { stage: '剪纸', name: 'EVA', spec: '2mm', unit: '㎡', price: 5 },
+  { stage: '剪纸', name: 'EVA', spec: '3mm', unit: '㎡', price: 8 },
+  { stage: '剪纸', name: 'EVA', spec: '1mm带背胶', unit: '㎡', price: 12 },
+  { stage: '剪纸', name: '皱纹纸', spec: '140g', unit: '卷', price: 13 },
+  { stage: '剪纸', name: '幻彩纸', spec: '60cm', unit: '卷', price: 35 },
+  { stage: '剪纸', name: '绵纸', spec: '1m', unit: 'm', price: 2 },
+
+  { stage: '上色', name: '丙烯颜料', spec: '300ml', unit: '瓶', price: 8 },
+  { stage: '上色', name: '丙烯颜料', spec: '2L', unit: '瓶', price: 50 },
+  { stage: '上色', name: '丙烯颜料', spec: '2kg', unit: '桶', price: 45 },
+  { stage: '上色', name: '丙烯颜料', spec: '10kg', unit: '桶', price: 180 },
+  { stage: '上色', name: '丙烯颜料', spec: '珠光300ml', unit: '瓶', price: 16 },
+  { stage: '上色', name: '处理液', spec: '500g', unit: '桶', price: 40 },
+  { stage: '上色', name: '底漆', spec: '1kg', unit: '桶', price: 30 },
+  { stage: '上色', name: '自喷漆', spec: '', unit: '瓶', price: 20 },
+  { stage: '上色', name: '罩面漆', spec: '500g (5²)', unit: '瓶', price: 15 },
+  { stage: '上色', name: '亮光油', spec: '500g (5²)', unit: '瓶', price: 30 },
+
+  { stage: '粘片', name: '钢丝', spec: '2mm×2m', unit: '根', price: 1.2 },
+  { stage: '粘片', name: '钢丝', spec: '2.5mm×4m', unit: '根', price: 4 },
+  { stage: '粘片', name: '热缩管', spec: '4mm', unit: 'm', price: 0.35 },
+  { stage: '粘片', name: '热缩管', spec: '6mm', unit: 'm', price: 0.5 },
+  { stage: '粘片', name: '铝丝', spec: '2.5mm软态', unit: 'm', price: 0.4 },
+  { stage: '粘片', name: '纸包铁丝', spec: '8# 100cm', unit: '根', price: 1.67 },
+  { stage: '粘片', name: '纸包铁丝', spec: '6# 80cm', unit: '根', price: 0.9 },
+  { stage: '粘片', name: '纸包铁丝', spec: '5# 60cm', unit: '根', price: 0.45 },
+  { stage: '粘片', name: '纸包铁丝', spec: '4# 60cm', unit: '根', price: 0.3 },
+  { stage: '粘片', name: '纸包铁丝', spec: '3# 60cm', unit: '根', price: 0.23 },
+  { stage: '粘片', name: '纸包铁丝', spec: '2# 40cm', unit: '根', price: 0.09 },
+  { stage: '粘片', name: '镀锌铁丝', spec: '14#', unit: 'm', price: 0.3 },
+  { stage: '粘片', name: '镀锌铁丝', spec: '12#', unit: 'm', price: 0.4 },
+  { stage: '粘片', name: '镀锌铁丝', spec: '10#', unit: 'm', price: 0.5 },
+  { stage: '粘片', name: '镀锌铁丝', spec: '4mm', unit: 'm', price: 0.7 },
+  { stage: '粘片', name: '白圈圈铁丝', spec: '3.2mm', unit: 'm', price: 0.5 },
+  { stage: '粘片', name: '白圈圈铁丝', spec: '2.6mm', unit: 'm', price: 0.3 },
+  { stage: '粘片', name: '包胶铁丝', spec: '12# 3m', unit: '根', price: 3.4 },
+  { stage: '粘片', name: '包胶铁丝', spec: '14# 2.2m', unit: '根', price: 1.3 },
+  { stage: '粘片', name: '包胶铁丝', spec: '10# 2m', unit: '根', price: 3.2 },
+  { stage: '粘片', name: '包胶铁丝', spec: '12# 2m', unit: '根', price: 2.2 },
+  { stage: '粘片', name: '包胶铁丝', spec: '14# 1.6m', unit: '根', price: 1.2 },
+  { stage: '粘片', name: '包胶铁丝', spec: '16# 1.6m', unit: '根', price: 0.65 },
+  { stage: '粘片', name: '包胶铁丝', spec: '18# 80cm', unit: '根', price: 0.14 },
+  { stage: '粘片', name: '白乳胶', spec: '25kg', unit: '桶', price: 180 },
+  { stage: '粘片', name: '电焊胶', spec: '50g', unit: '瓶', price: 1 },
+
+  { stage: '组装', name: '纸胶带', spec: '2.4宽', unit: '卷', price: 2.4 },
+  { stage: '组装', name: '铝塑管', spec: '16管', unit: 'm', price: 2 },
+  { stage: '组装', name: '铝塑管', spec: '20管', unit: 'm', price: 3.5 },
+  { stage: '组装', name: '铝塑管', spec: '25管', unit: 'm', price: 5 },
+  { stage: '组装', name: '铝塑管', spec: '32管', unit: 'm', price: 7.5 },
+  { stage: '组装', name: '铝管', spec: '0402', unit: 'm', price: 2.96 },
+  { stage: '组装', name: '铝管', spec: '0604', unit: 'm', price: 3.84 },
+  { stage: '组装', name: '铝管', spec: '0806', unit: 'm', price: 4.32 },
+  { stage: '组装', name: '铝管', spec: '1008', unit: 'm', price: 5.04 },
+  { stage: '组装', name: '铝管', spec: '1210', unit: 'm', price: 5.76 },
+  { stage: '组装', name: '电工胶布', spec: '20m/卷', unit: '卷', price: 1.2 },
+  { stage: '组装', name: '胶棒', spec: '7×300', unit: '根', price: 0.25 },
+  { stage: '组装', name: '胶棒', spec: '11×300', unit: '根', price: 0.5 },
+
+  { stage: '花心', name: '树脂黏土', spec: '200g', unit: '袋', price: 10 },
+  { stage: '花心', name: '黏土', spec: '', unit: '袋', price: 5 },
+  { stage: '花心', name: '泡沫球', spec: '6cm', unit: '个', price: 0.2 },
+  { stage: '花心', name: '泡沫球', spec: '7cm', unit: '个', price: 0.32 },
+  { stage: '花心', name: '泡沫球', spec: '8cm', unit: '个', price: 0.54 },
+  { stage: '花心', name: '泡沫球', spec: '9cm', unit: '个', price: 0.65 },
+  { stage: '花心', name: '泡沫球', spec: '10cm', unit: '个', price: 0.8 },
+  { stage: '花心', name: '泡沫球', spec: '12cm', unit: '个', price: 1.6 },
+  { stage: '花心', name: '泡沫球', spec: '15cm', unit: '个', price: 3.22 },
+  { stage: '花心', name: '泡沫球', spec: '18cm', unit: '个', price: 6 },
+  { stage: '花心', name: '泡沫球', spec: '20cm', unit: '个', price: 8.2 },
+  { stage: '花心', name: '泡沫球', spec: '25cm', unit: '个', price: 10 },
+  { stage: '花心', name: '泡沫球', spec: '30cm', unit: '个', price: 14 },
+  { stage: '花心', name: '泡沫球', spec: '35cm', unit: '个', price: 25 },
+  { stage: '花心', name: '泡沫球', spec: '50cm', unit: '个', price: 60 },
+  { stage: '花心', name: '泡沫球', spec: '60cm', unit: '个', price: 135 },
+  { stage: '花心', name: '泡沫球', spec: '80cm', unit: '个', price: 156 },
+
+  { stage: '灯', name: '灯线', spec: '0.3方', unit: 'm', price: 1.5 },
+  { stage: '灯', name: '灯珠', spec: '4000K', unit: '个', price: 1.5 },
+
+  { stage: '珍珠', name: '珍珠', spec: '1cm', unit: '颗', price: 0.03 },
+  { stage: '珍珠', name: '珍珠', spec: '1.2cm', unit: '颗', price: 0.05 },
+  { stage: '珍珠', name: '珍珠', spec: '1.4cm', unit: '颗', price: 0.08 },
+  { stage: '珍珠', name: '珍珠', spec: '1.6cm', unit: '颗', price: 0.12 },
+  { stage: '珍珠', name: '珍珠', spec: '1.8cm', unit: '颗', price: 0.18 },
+  { stage: '珍珠', name: '珍珠', spec: '2cm', unit: '颗', price: 0.24 },
+  { stage: '珍珠', name: '珍珠', spec: '2.5cm', unit: '颗', price: 0.5 },
+  { stage: '珍珠', name: '珍珠', spec: '3cm', unit: '颗', price: 1 },
+  { stage: '珍珠', name: '珍珠', spec: '4cm', unit: '颗', price: 3.2 },
+
+  { stage: '电线', name: '电线', spec: '0.5方', unit: 'm', price: 0.35 },
+
+  { stage: '打包', name: '塑料袋', spec: '', unit: '个', price: 0 },
+  { stage: '打包', name: '保鲜膜', spec: '', unit: '卷', price: 0 },
+  { stage: '打包', name: '纸箱', spec: '', unit: '个', price: 10 },
+  { stage: '打包', name: '底座', spec: '', unit: '个', price: 20 },
+];
+
+/* ============================================================
+ *  状态
+ * ============================================================ */
+const state = {
+  orderNo: '',           // 当前单号
+  note: '',              // 备注
+  items: [],             // 当前单号的清单项
+  customMaterials: [],   // 用户自定义材料
+  selectedKeys: new Set(),  // 已勾选的材料 key（stage|name|spec）
+  libStage: '全部',
+  libKeyword: '',
+  historyOrders: [],     // 历史单号
+};
+
+const $ = id => document.getElementById(id);
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const esc = s => String(s ?? '').replace(/[&<>"']/g,
+  c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+const fmtMoney = n => (Number(n) || 0).toFixed(2);
+const matKey = m => `${m.stage || ''}|${m.name}|${m.spec || ''}`;
+
+function setSyncStatus(text, isErr) {
+  const el = $('syncStatus'), txt = $('syncText');
+  if (!el || !txt) return;
+  txt.textContent = text;
+  el.classList.toggle('err', !!isErr);
+}
+
+/* 合并内置 + 自定义材料 */
+function allMaterials() {
+  return [...BUILTIN_MATERIALS, ...state.customMaterials];
+}
+function allStages() {
+  const set = new Set(['全部']);
+  allMaterials().forEach(m => { if (m.stage) set.add(m.stage); });
+  return Array.from(set);
+}
+
+/* ============================================================
+ *  本地缓存
+ * ============================================================ */
+function saveLocal() {
+  try {
+    localStorage.setItem(LOCAL_ORDERS_KEY, JSON.stringify({
+      orderNo: state.orderNo,
+      note: state.note,
+      items: state.items,
+    }));
+    localStorage.setItem(LOCAL_CUSTOM_KEY, JSON.stringify(state.customMaterials));
+  } catch (e) {}
+}
+function loadLocal() {
+  try {
+    const d = JSON.parse(localStorage.getItem(LOCAL_ORDERS_KEY) || '{}');
+    state.orderNo = d.orderNo || '';
+    state.note = d.note || '';
+    state.items = Array.isArray(d.items) ? d.items : [];
+    state.customMaterials = JSON.parse(localStorage.getItem(LOCAL_CUSTOM_KEY) || '[]');
+  } catch (e) {}
+}
+
+/* ============================================================
+ *  云端加载
+ * ============================================================ */
+async function loadFromCloud() {
+  try {
+    setSyncStatus('加载中…', false);
+    /* 自定义材料 */
+    const { data: mats, error: e1 } = await supa.from('custom_materials').select('*');
+    if (!e1 && mats) {
+      state.customMaterials = mats.map(m => ({
+        id: m.id, stage: m.stage || '自定义',
+        name: m.name, spec: m.spec || '',
+        unit: m.unit || '', price: Number(m.price) || 0,
+      }));
+    }
+    /* 历史单号 */
+    const { data: orders, error: e2 } = await supa.from('order_materials').select('order_no, updated_at');
+    if (!e2 && orders) {
+      state.historyOrders = orders
+        .filter(o => o.order_no)
+        .sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || ''));
+    }
+    setSyncStatus('已同步', false);
+  } catch (e) {
+    console.warn('云端加载失败', e);
+    setSyncStatus('离线模式', true);
+  }
+}
+
+/* 按单号加载清单 */
+async function loadOrder(orderNo) {
+  if (!orderNo) return;
+  try {
+    setSyncStatus('加载中…', false);
+    const { data, error } = await supa.from('order_materials')
+      .select('*').eq('order_no', orderNo).maybeSingle();
+    if (error) throw error;
+    if (data) {
+      state.items = Array.isArray(data.items) ? data.items : [];
+      state.note = data.note || '';
+    } else {
+      state.items = [];
+      state.note = '';
+    }
+    setSyncStatus('已同步', false);
+  } catch (e) {
+    console.warn('加载单号失败', e);
+    setSyncStatus('离线模式', true);
+  }
+}
+
+/* ============================================================
+ *  保存（自动防抖）
+ * ============================================================ */
+let saveTimer = null;
+function saveCloud() {
+  saveLocal();
+  if (!state.orderNo.trim()) return;
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(async () => {
+    saveTimer = null;
+    const orderNo = state.orderNo.trim();
+    if (!orderNo) return;
+    let total = 0;
+    state.items.forEach(it => {
+      total += (Number(it.price) || 0) * (Number(it.qty) || 0);
+    });
+    try {
+      setSyncStatus('同步中…', false);
+      const { error } = await supa.from('order_materials').upsert({
+        order_no: orderNo,
+        items: state.items,
+        note: state.note,
+        total,
+        updated_at: new Date().toISOString(),
+      });
+      if (error) throw error;
+      /* 刷新历史单号 */
+      if (!state.historyOrders.find(o => o.order_no === orderNo)) {
+        state.historyOrders.unshift({ order_no: orderNo, updated_at: new Date().toISOString() });
+        renderOrderSelect();
+      }
+      setSyncStatus('已同步', false);
+    } catch (e) {
+      console.warn('保存失败', e);
+      setSyncStatus('同步失败', true);
+    }
+  }, 700);
+}
+
+/* ============================================================
+ *  渲染 - 单号下拉
+ * ============================================================ */
+function renderOrderSelect() {
+  const sel = $('orderSelect');
+  sel.innerHTML = '<option value="">历史…</option>';
+  state.historyOrders.forEach(o => {
+    const opt = document.createElement('option');
+    opt.value = o.order_no;
+    opt.textContent = o.order_no;
+    sel.appendChild(opt);
+  });
+}
+
+function renderOrderDisplay() {
+  const el = $('listOrderDisplay');
+  if (state.orderNo.trim()) {
+    el.textContent = state.orderNo.trim();
+    el.classList.remove('empty');
+  } else {
+    el.textContent = '未填单号';
+    el.classList.add('empty');
+  }
+}
+
+/* ============================================================
+ *  渲染 - 材料库
+ * ============================================================ */
+function renderLibTabs() {
+  const box = $('libTabs');
+  box.innerHTML = '';
+  allStages().forEach(s => {
+    const btn = document.createElement('button');
+    btn.className = 'lib-tab' + (state.libStage === s ? ' active' : '');
+    btn.textContent = s;
+    btn.onclick = () => {
+      state.libStage = s;
+      renderLibTabs();
+      renderLibBody();
+    };
+    box.appendChild(btn);
+  });
+}
+
+function renderLibBody() {
+  const box = $('libBody');
+  const kw = state.libKeyword.trim().toLowerCase();
+
+  let list = allMaterials();
+  if (state.libStage !== '全部') {
+    list = list.filter(m => m.stage === state.libStage);
+  }
+  if (kw) {
+    list = list.filter(m =>
+      (m.name + ' ' + (m.spec || '') + ' ' + m.stage).toLowerCase().includes(kw)
+    );
+  }
+
+  if (!list.length) {
+    box.innerHTML = `
+      <div class="lib-empty">
+        <span class="ico">🔍</span>
+        没有找到匹配的材料
+      </div>`;
+    return;
+  }
+
+  /* 按阶段分组 */
+  const groups = {};
+  list.forEach(m => {
+    if (!groups[m.stage]) groups[m.stage] = [];
+    groups[m.stage].push(m);
+  });
+
+  box.innerHTML = '';
+  Object.keys(groups).forEach(stage => {
+    const grp = document.createElement('div');
+    grp.className = 'lib-group';
+
+    const title = document.createElement('div');
+    title.className = 'lib-group-title';
+    title.textContent = stage;
+    grp.appendChild(title);
+
+    groups[stage].forEach(m => {
+      const k = matKey(m);
+      const selected = state.selectedKeys.has(k);
+
+      const row = document.createElement('div');
+      row.className = 'm-item' + (selected ? ' selected' : '');
+      row.innerHTML = `
+        <button class="m-check${selected ? ' on' : ''}" data-key="${esc(k)}" title="选中/取消"></button>
+        <div class="m-main">
+          <div class="m-name">${esc(m.name)}${m.spec ? `<small>${esc(m.spec)}</small>` : ''}</div>
+        </div>
+        <span class="m-unit">${esc(m.unit || '-')}</span>
+        <span class="m-price">${fmtMoney(m.price)}</span>
+        <button class="m-add" title="直接加入清单">＋</button>
+      `;
+
+      /* 点勾选框：切换选中 */
+      row.querySelector('.m-check').addEventListener('click', e => {
+        e.stopPropagation();
+        if (state.selectedKeys.has(k)) state.selectedKeys.delete(k);
+        else state.selectedKeys.add(k);
+        renderLibBody();
+        renderSelbar();
+      });
+
+      /* 点主体：也切换选中 */
+      row.querySelector('.m-main').addEventListener('click', () => {
+        if (state.selectedKeys.has(k)) state.selectedKeys.delete(k);
+        else state.selectedKeys.add(k);
+        renderLibBody();
+        renderSelbar();
+      });
+
+      /* 点 + ：直接加入清单 */
+      row.querySelector('.m-add').addEventListener('click', e => {
+        e.stopPropagation();
+        addMaterialToCart(m);
+      });
+
+      grp.appendChild(row);
+    });
+
+    box.appendChild(grp);
+  });
+}
+
+function renderSelbar() {
+  const bar = $('libSelbar');
+  const cnt = $('selCount');
+  const n = state.selectedKeys.size;
+  cnt.textContent = n;
+  bar.classList.toggle('show', n > 0);
+}
+
+/* ============================================================
+ *  加入清单
+ * ============================================================ */
+function addMaterialToCart(m) {
+  if (!state.orderNo.trim()) {
+    alert('请先在顶部输入单号');
+    $('orderInput').focus();
+    return;
+  }
+  /* 同名同规格的累加 */
+  const existing = state.items.find(it =>
+    it.name === m.name && (it.spec || '') === (m.spec || '')
+  );
+  if (existing) {
+    existing.qty = (Number(existing.qty) || 0) + 1;
+  } else {
+    state.items.push({
+      id: uid(),
+      stage: m.stage || '',
+      name: m.name,
+      spec: m.spec || '',
+      unit: m.unit || '',
+      price: Number(m.price) || 0,
+      qty: 1,
+    });
+  }
+  saveCloud();
+  renderList();
+}
+
+function addSelectedMaterials() {
+  if (!state.orderNo.trim()) {
+    alert('请先在顶部输入单号');
+    $('orderInput').focus();
+    return;
+  }
+  const keys = Array.from(state.selectedKeys);
+  if (!keys.length) return;
+
+  const mats = allMaterials();
+  let added = 0;
+  keys.forEach(k => {
+    const m = mats.find(x => matKey(x) === k);
+    if (!m) return;
+    const existing = state.items.find(it =>
+      it.name === m.name && (it.spec || '') === (m.spec || '')
+    );
+    if (existing) {
+      existing.qty = (Number(existing.qty) || 0) + 1;
+    } else {
+      state.items.push({
+        id: uid(),
+        stage: m.stage || '',
+        name: m.name,
+        spec: m.spec || '',
+        unit: m.unit || '',
+        price: Number(m.price) || 0,
+        qty: 1,
+      });
+    }
+    added++;
+  });
+
+  state.selectedKeys.clear();
+  saveCloud();
+  renderLibBody();
+  renderSelbar();
+  renderList();
+}
+
+/* ============================================================
+ *  渲染 - 清单
+ * ============================================================ */
+function renderList() {
+  const box = $('listBody');
+  const noteInp = $('listNoteInput');
+
+  if (document.activeElement !== noteInp) noteInp.value = state.note || '';
+  renderOrderDisplay();
+
+  if (!state.items.length) {
+    box.innerHTML = `
+      <div class="list-empty">
+        <span class="ico">🛒</span>
+        清单是空的
+        <div class="hint">在左侧材料库勾选材料后，点「加入清单」<br>或点材料右侧的 ＋ 单个添加</div>
+      </div>`;
+    updateFooter(0, 0, 0);
+    return;
+  }
+
+  let html = `
+    <div class="list-row-header">
+      <span>材料 / 规格</span>
+      <span>单位</span>
+      <span>单价</span>
+      <span>数量</span>
+      <span>小计</span>
+      <span></span>
+    </div>
+  `;
+
+  let total = 0, totalQty = 0;
+  state.items.forEach(it => {
+    const price = Number(it.price) || 0;
+    const qty = Number(it.qty) || 0;
+    const sub = price * qty;
+    total += sub;
+    totalQty += qty;
+
+    html += `
+      <div class="list-row" data-id="${it.id}">
+        <div class="lr-name">
+          ${esc(it.name)}
+          ${it.spec ? `<small>${esc(it.spec)}</small>` : ''}
+        </div>
+        <span class="lr-unit">${esc(it.unit || '-')}</span>
+        <input class="lr-input lr-price" type="number" step="0.01" min="0"
+               value="${price}" data-field="price">
+        <input class="lr-input lr-qty" type="number" step="1" min="0"
+               value="${qty}" data-field="qty">
+        <span class="lr-subtotal">¥${fmtMoney(sub)}</span>
+        <button class="lr-del" title="删除">×</button>
+      </div>
+    `;
+  });
+
+  box.innerHTML = html;
+
+  box.querySelectorAll('.list-row').forEach(row => {
+    const id = row.dataset.id;
+
+    row.querySelectorAll('.lr-input').forEach(inp => {
+      inp.addEventListener('input', () => {
+        const field = inp.dataset.field;
+        const v = Number(inp.value) || 0;
+        const it = state.items.find(x => x.id === id);
+        if (!it) return;
+        it[field] = v;
+        const price = Number(it.price) || 0;
+        const qty = Number(it.qty) || 0;
+        row.querySelector('.lr-subtotal').textContent = '¥' + fmtMoney(price * qty);
+        let total = 0, totalQty = 0;
+        state.items.forEach(x => {
+          const pr = Number(x.price) || 0;
+          const q = Number(x.qty) || 0;
+          total += pr * q;
+          totalQty += q;
+        });
+        updateFooter(total, state.items.length, totalQty);
+        saveCloud();
+      });
+      inp.addEventListener('blur', () => {
+        if (inp.value === '' || isNaN(Number(inp.value))) inp.value = 0;
+      });
+      inp.addEventListener('focus', () => inp.select());
+    });
+
+    row.querySelector('.lr-del').addEventListener('click', () => {
+      if (!confirm(`删除「${row.querySelector('.lr-name').textContent.trim()}」？`)) return;
+      state.items = state.items.filter(x => x.id !== id);
+      saveCloud();
+      renderList();
+    });
+  });
+
+  updateFooter(total, state.items.length, totalQty);
+}
+
+function updateFooter(total, count, qty) {
+  $('totalDisplay').innerHTML = `¥${fmtMoney(total)}`;
+  $('countDisplay').textContent = `${count} / ${Number(qty).toFixed(0)}`;
+}
+
+/* ============================================================
+ *  添加自定义材料
+ * ============================================================ */
+function openAddMatModal() {
+  $('newMatStage').value = '';
+  $('newMatName').value = '';
+  $('newMatSpec').value = '';
+  $('newMatUnit').value = '';
+  $('newMatPrice').value = '';
+
+  /* 填充分类 datalist */
+  const dl = $('stageList');
+  dl.innerHTML = '';
+  allStages().filter(s => s !== '全部').forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s;
+    dl.appendChild(opt);
+  });
+
+  $('addMatModal').classList.add('show');
+  setTimeout(() => $('newMatName').focus(), 100);
+}
+function closeAddMatModal() {
+  $('addMatModal').classList.remove('show');
+}
+async function saveNewMaterial() {
+  const stage = ($('newMatStage').value || '').trim();
+  const name = ($('newMatName').value || '').trim();
+  const spec = ($('newMatSpec').value || '').trim();
+  const unit = ($('newMatUnit').value || '').trim();
+  const price = Number($('newMatPrice').value) || 0;
+
+  if (!stage) { alert('请填写分类'); $('newMatStage').focus(); return; }
+  if (!name) { alert('请填写材料名称'); $('newMatName').focus(); return; }
+
+  /* 检查重复 */
+  const dup = allMaterials().find(m =>
+    m.stage === stage && m.name === name && (m.spec || '') === spec
+  );
+  if (dup) {
+    if (!confirm(`已存在：${stage} / ${name} ${spec}，是否仍然添加？`)) return;
+  }
+
+  const newMat = {
+    id: uid(),
+    stage,
+    name,
+    spec,
+    unit,
+    price,
+  };
+
+  state.customMaterials.push(newMat);
+  saveLocal();
+  closeAddMatModal();
+  renderLibTabs();
+  renderLibBody();
+
+  /* 云端保存 */
+  try {
+    setSyncStatus('同步中…', false);
+    const { error } = await supa.from('custom_materials').insert({
+      id: newMat.id, stage, name, spec, unit, price,
+    });
+    if (error) throw error;
+    setSyncStatus('已同步', false);
+  } catch (e) {
+    console.warn('材料保存失败', e);
+    setSyncStatus('同步失败（已存本地）', true);
+  }
+}
+
+/* ============================================================
+ *  导入 / 导出
+ * ============================================================ */
+function exportData() {
+  const orderNo = state.orderNo.trim();
+  const payload = {
+    app: 'material',
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    orderNo: orderNo || '',
+    note: state.note || '',
+    items: state.items,
+  };
+
+  const text = JSON.stringify(payload, null, 2);
+  const blob = new Blob([text], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const t = new Date();
+  const stamp = `${t.getFullYear()}${String(t.getMonth()+1).padStart(2,'0')}${String(t.getDate()).padStart(2,'0')}-${String(t.getHours()).padStart(2,'0')}${String(t.getMinutes()).padStart(2,'0')}`;
+  const safeName = (orderNo || '材料清单').replace(/[\\\/:*?"<>|]/g, '_');
+  a.href = url;
+  a.download = `${safeName}-${stamp}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+async function importData(file) {
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    if (!data || typeof data !== 'object') throw new Error('文件内容无法识别');
+
+    const items = Array.isArray(data.items) ? data.items : [];
+    const note = typeof data.note === 'string' ? data.note : '';
+    const orderNo = String(data.orderNo || '').trim();
+
+    const msg = `导入将替换当前清单\n\n` +
+                `文件内容：${items.length} 项材料\n` +
+                `单号：${orderNo || '（未填）'}\n\n` +
+                `确定继续？`;
+    if (!confirm(msg)) return;
+
+    /* 先设置单号（若文件里有） */
+    if (orderNo && !state.orderNo.trim()) {
+      state.orderNo = orderNo;
+      $('orderInput').value = orderNo;
+    }
+
+    state.items = items.map(it => ({
+      id: it.id || uid(),
+      stage: it.stage || '',
+      name: it.name || '未命名',
+      spec: it.spec || '',
+      unit: it.unit || '',
+      price: Number(it.price) || 0,
+      qty: Number(it.qty) || 1,
+    }));
+    state.note = note;
+
+    saveCloud();
+    renderList();
+    alert('导入成功！');
+  } catch (e) {
+    console.error('导入失败', e);
+    alert('导入失败：' + (e.message || '文件格式不正确'));
+  }
+}
+
+/* ============================================================
+ *  事件绑定
+ * ============================================================ */
+function bind() {
+  /* 单号输入 */
+  $('orderInput').addEventListener('input', e => {
+    state.orderNo = e.target.value;
+    renderOrderDisplay();
+    saveCloud();
+  });
+  $('orderInput').addEventListener('blur', async () => {
+    const v = state.orderNo.trim();
+    if (!v) return;
+    /* 切换单号时加载对应清单 */
+    if (state.historyOrders.find(o => o.order_no === v)) {
+      await loadOrder(v);
+      renderList();
+    }
+  });
+
+  /* 单号下拉 */
+  $('orderSelect').addEventListener('change', async e => {
+    const v = e.target.value;
+    if (!v) return;
+    state.orderNo = v;
+    $('orderInput').value = v;
+    renderOrderDisplay();
+    await loadOrder(v);
+    renderList();
+    e.target.value = '';
+  });
+
+  /* 备注 */
+  $('listNoteInput').addEventListener('input', e => {
+    state.note = e.target.value;
+    saveCloud();
+  });
+
+  /* 材料库搜索 */
+  $('libSearch').addEventListener('input', e => {
+    state.libKeyword = e.target.value;
+    renderLibBody();
+  });
+
+  /* 已选栏按钮 */
+  $('addSelectedBtn').onclick = addSelectedMaterials;
+  $('clearSelBtn').onclick = () => {
+    state.selectedKeys.clear();
+    renderLibBody();
+    renderSelbar();
+  };
+
+  /* 添加材料 */
+  $('libAddBtn').onclick = openAddMatModal;
+  $('addMatClose').onclick = closeAddMatModal;
+  $('addMatCancel').onclick = closeAddMatModal;
+  $('addMatConfirm').onclick = saveNewMaterial;
+  $('addMatModal').addEventListener('click', e => {
+    if (e.target === $('addMatModal')) closeAddMatModal();
+  });
+
+  /* 清空清单 */
+  $('clearListBtn').onclick = () => {
+    if (!state.items.length) return;
+    if (!confirm('确定清空当前清单？此操作不可撤销。')) return;
+    state.items = [];
+    saveCloud();
+    renderList();
+  };
+
+  /* 导入导出 */
+  $('exportBtn').onclick = exportData;
+  $('importBtn').onclick = () => $('importFile').click();
+  $('importFile').onchange = async e => {
+    const f = e.target.files && e.target.files[0];
+    if (f) await importData(f);
+    e.target.value = '';
+  };
+
+  /* 全局快捷键 */
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      if ($('addMatModal').classList.contains('show')) {
+        closeAddMatModal();
+      }
+    }
+    /* Enter 在添加材料弹窗里提交 */
+    if (e.key === 'Enter' && $('addMatModal').classList.contains('show')) {
+      const tag = (e.target.tagName || '').toLowerCase();
+      if (tag === 'input') {
+        e.preventDefault();
+        saveNewMaterial();
+      }
+    }
+  });
+}
+
+/* ============================================================
+ *  启动
+ * ============================================================ */
+async function init() {
+  loadLocal();
+
+  /* 恢复上次的单号输入 */
+  if (state.orderNo) $('orderInput').value = state.orderNo;
+
+  bind();
+  renderLibTabs();
+  renderLibBody();
+  renderSelbar();
+  renderOrderDisplay();
+  renderList();
+
+  await loadFromCloud();
+  renderOrderSelect();
+  renderLibTabs();
+  renderLibBody();
+}
+
+init();
+</script>
+</body>
+</html>
