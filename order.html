@@ -1,0 +1,2833 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>半分纸艺 · 报价预算订单系统</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%234874CB'/%3E%3Ctext x='32' y='44' font-size='34' text-anchor='middle' fill='%23fff' font-family='Microsoft YaHei,sans-serif'%3E报%3C/text%3E%3C/svg%3E">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --blue:#4874CB; --blue-dark:#3A5FB0; --blue-deep:#2E4E96;
+  --blue-tint:#B6C7EA; --blue-soft:#E8EEF9; --blue-pale:#F3F7FC;
+  --orange:#EE822F; --orange-soft:#FDEEDF;
+  --red:#C00000; --red-soft:#FBE9E9;
+  --ink:#1F2733; --ink-2:#3A4556; --muted:#6B7686; --faint:#98A2B3;
+  --line:#D6DDEB; --line-soft:#E7ECF4; --bg:#EEF1F7; --card:#FFFFFF;
+  --shadow:0 1px 3px rgba(30,45,80,.08),0 4px 14px rgba(30,45,80,.06);
+  --radius:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{font-size:14px}
+body{
+  font-family:"Microsoft YaHei","PingFang SC","Hiragino Sans GB","Noto Sans SC",-apple-system,Segoe UI,sans-serif;
+  background:var(--bg); color:var(--ink); min-height:100vh; display:flex; flex-direction:column;
+  -webkit-font-smoothing:antialiased;
+}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
+::placeholder{color:var(--faint)}
+
+.topbar{
+  display:flex; background:#fff; border-bottom:2px solid var(--blue);
+  box-shadow:var(--shadow); position:sticky; top:0; z-index:50; flex-wrap:wrap;
+}
+.topbar .brand{
+  display:flex; align-items:center; gap:10px; padding:0 20px; border-right:1px solid var(--line-soft);
+  font-weight:700; font-size:16px; color:var(--blue-deep); white-space:nowrap;
+}
+.topbar .brand .logo{
+  width:34px;height:34px;border-radius:9px;background:var(--blue);
+  color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;
+}
+.top-tabs{display:flex;flex:1;min-width:0}
+.top-tab{
+  flex:1; display:flex; align-items:center; justify-content:center; gap:8px;
+  padding:14px 10px; font-size:20px; font-weight:700; letter-spacing:2px;
+  color:var(--blue); background:#fff; border-bottom:3px solid transparent;
+  transition:background .15s,color .15s;
+}
+.top-tab:hover{background:var(--blue-pale)}
+.top-tab.active{background:var(--blue); color:#fff}
+.top-tab svg{width:20px;height:20px;fill:currentColor}
+.top-actions{
+  display:flex; align-items:center; gap:8px; padding:8px 14px;
+  border-left:1px solid var(--line-soft); flex-shrink:0;
+}
+.sync-status{
+  font-size:11.5px; font-weight:700; padding:3px 10px; border-radius:999px;
+  background:#f0fdf8; color:#0a8f66; border:1px solid #c9eddc;
+  display:inline-flex; align-items:center; gap:4px; white-space:nowrap;
+}
+.sync-status.err{background:#fff5f6;color:#e8455a;border-color:#ffd7db}
+.sync-status .dot{width:6px;height:6px;border-radius:50%;background:currentColor;animation:blink 1.6s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.35}}
+
+.layout{display:flex;flex:1;align-items:stretch}
+.sidebar{
+  width:178px; flex:0 0 178px; background:#fff; border-right:1px solid var(--line-soft);
+  padding:16px 14px; display:flex; flex-direction:column; gap:14px;
+}
+.side-card{
+  aspect-ratio:4/4.6; border-radius:14px; background:var(--blue-soft);
+  border:1.5px dashed var(--blue-tint);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px;
+  color:var(--blue); font-size:13px; transition:transform .15s,box-shadow .15s;
+}
+.side-card:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
+.side-card svg{width:30px;height:30px;fill:var(--blue-tint)}
+.side-btn{
+  margin-top:auto; padding:11px 8px; border-radius:10px; background:var(--blue);
+  color:#fff; font-size:14px; font-weight:700; text-align:center; box-shadow:var(--shadow);
+}
+.side-btn:hover{background:var(--blue-dark)}
+.side-btn.orange{background:var(--orange)}
+.side-btn.orange:hover{background:#DD741F}
+
+.main{flex:1; min-width:0; padding:18px 22px 34px; overflow-x:auto}
+
+.page-head{display:flex; align-items:flex-end; justify-content:space-between; gap:14px; flex-wrap:wrap; margin-bottom:14px}
+.page-title{font-size:26px; font-weight:800; color:var(--orange); letter-spacing:1px; line-height:1.2}
+.page-sub{font-size:13px; color:var(--muted); margin-top:4px}
+
+.sub-tabs{display:flex; gap:6px; margin-bottom:14px; border-bottom:2px solid var(--line-soft); padding-bottom:8px}
+.sub-tab{
+  padding:8px 20px; border-radius:8px 8px 0 0; font-size:15px; font-weight:700;
+  color:var(--muted); background:#fff; border:1px solid var(--line-soft); border-bottom:none;
+}
+.sub-tab.active{color:var(--red); background:var(--red-soft); border-color:#F3C9C9}
+.sub-tab:hover{color:var(--red)}
+
+.panel{background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); border:1px solid var(--line-soft); margin-bottom:18px}
+.panel-head{
+  display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
+  padding:12px 16px; border-bottom:1px solid var(--line-soft);
+}
+.panel-head .t{font-size:16px; font-weight:800; color:var(--ink)}
+.panel-head .hint{font-size:12px; color:var(--faint)}
+.panel-body{padding:14px 16px}
+.panel-body.pad0{padding:0}
+
+table.grid{width:100%; border-collapse:collapse; table-layout:fixed; background:#fff}
+table.grid th,table.grid td{border:1px solid var(--line); padding:8px 9px; vertical-align:middle; word-break:break-word}
+table.grid thead th{background:var(--blue-tint); color:var(--ink); font-weight:800; font-size:13.5px; text-align:center}
+table.grid td.center{text-align:center}
+table.grid td.num{text-align:right; font-variant-numeric:tabular-nums}
+table.grid tbody tr:nth-child(even){background:#FAFBFD}
+table.grid .strong{color:var(--blue-deep); font-weight:800}
+table.grid .red{color:var(--red); font-weight:800}
+.money{font-weight:800; color:var(--blue-deep); font-variant-numeric:tabular-nums}
+
+.btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  padding:8px 16px; border-radius:8px; font-size:13.5px; font-weight:700;
+  border:1px solid var(--blue); color:var(--blue); background:#fff; transition:all .15s; white-space:nowrap;
+}
+.btn:hover{background:var(--blue-pale)}
+.btn.primary{background:var(--blue); color:#fff}
+.btn.primary:hover{background:var(--blue-dark)}
+.btn.orange{background:var(--orange); border-color:var(--orange); color:#fff}
+.btn.orange:hover{background:#DD741F}
+.btn.red{background:var(--red); border-color:var(--red); color:#fff}
+.btn.red:hover{background:#A50000}
+.btn.sm{padding:4px 10px; font-size:12.5px; border-radius:6px}
+.btn.ghost{border-color:var(--line); color:var(--muted)}
+.btn.ghost:hover{border-color:var(--blue); color:var(--blue)}
+.btn:disabled{opacity:.5; cursor:not-allowed}
+.btn svg{width:14px;height:14px;fill:currentColor}
+
+.input,.select,.textarea{
+  width:100%; border:1px solid var(--line); border-radius:7px; padding:7px 10px;
+  background:#fff; font-size:13.5px; outline:none; transition:border-color .15s,box-shadow .15s;
+}
+.input:focus,.select:focus,.textarea:focus{border-color:var(--blue); box-shadow:0 0 0 3px rgba(72,116,203,.14)}
+.input.auto-num{text-align:right}
+.field{display:flex; flex-direction:column; gap:4px; min-width:0}
+.field label{font-size:12px; color:var(--muted); font-weight:600}
+.cell-input{border:none;background:transparent;width:100%;text-align:center;outline:none;border-radius:4px;padding:2px}
+.cell-input:focus{background:var(--blue-pale)}
+.cell-input.num{text-align:right}
+
+.lib-toolbar{display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:12px}
+.search-box{position:relative; flex:1; min-width:220px; max-width:420px}
+.search-box svg{position:absolute; left:10px; top:50%; transform:translateY(-50%); width:16px;height:16px;fill:var(--faint)}
+.search-box input{padding-left:34px}
+.tag{display:inline-block; padding:1px 8px; border-radius:20px; font-size:11.5px; background:var(--blue-soft); color:var(--blue-deep); font-weight:700}
+.tag.red{background:var(--red-soft); color:var(--red)}
+.tag.green{background:#E3F3E3; color:#1E7A3C}
+
+.rec-card{border:1px solid var(--line-soft); border-radius:var(--radius); background:#fff; box-shadow:var(--shadow); margin-bottom:18px; overflow:hidden; transition:box-shadow .15s,border-color .15s}
+.rec-card.active-rec{border-color:var(--blue); box-shadow:0 0 0 2px var(--blue-soft), var(--shadow)}
+.rec-head{
+  display:flex; flex-wrap:wrap; gap:12px 22px; align-items:center;
+  background:var(--blue-pale); padding:12px 18px; border-bottom:1px solid var(--line-soft);
+}
+.rec-card.active-rec .rec-head{background:linear-gradient(90deg,#eef3ff,#f6f9ff)}
+.rec-head .fi{display:flex; flex-direction:column; gap:3px; min-width:120px; flex:1; max-width:210px}
+.rec-head .fi label{font-size:12px; color:var(--muted); font-weight:700}
+.rec-head .fi input{border:none; background:#fff; border-radius:6px; padding:6px 10px; border:1px solid var(--line)}
+.rec-head .fi input:focus{outline:none; border-color:var(--blue); box-shadow:0 0 0 3px rgba(72,116,203,.14)}
+.rec-actions{display:flex; gap:8px; flex-wrap:wrap}
+.quote-block{border-bottom:1px dashed var(--line-soft); padding:14px 18px}
+.quote-block:last-child{border-bottom:none}
+.qb-top{display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:10px}
+.qb-title{font-size:14px; font-weight:800; color:var(--blue-deep)}
+.qb-title .idx{display:inline-block; min-width:22px; text-align:center; background:var(--blue); color:#fff; border-radius:6px; padding:1px 6px; margin-right:8px; font-size:13px}
+.quote-price{font-size:20px; font-weight:800; color:var(--orange); font-variant-numeric:tabular-nums}
+.quote-price small{font-size:12px; color:var(--faint); font-weight:600; margin-right:4px}
+
+.mode-tabs{display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap}
+.mode-tab{
+  padding:9px 18px; border-radius:10px; background:#fff; border:1.5px solid var(--line);
+  font-size:14px; font-weight:700; color:var(--muted); text-align:left; line-height:1.35;
+}
+.mode-tab b{display:block; font-size:15px; color:inherit}
+.mode-tab small{font-weight:500; color:var(--faint); font-size:12px}
+.mode-tab.active{border-color:var(--blue); background:var(--blue); color:#fff; box-shadow:var(--shadow)}
+.mode-tab.active small{color:#DCE6F7}
+.budget-top{display:flex; flex-wrap:wrap; gap:12px 20px; align-items:flex-end; margin-bottom:14px}
+.budget-top .fi{flex:1; min-width:130px; max-width:200px}
+.budget-top .fi label{display:block; font-size:12px; color:var(--muted); font-weight:700; margin-bottom:4px}
+.budget-total-banner{
+  display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;
+  background:linear-gradient(90deg,var(--blue),var(--blue-deep)); color:#fff;
+  border-radius:var(--radius); padding:14px 22px; margin-bottom:16px; box-shadow:var(--shadow);
+}
+.budget-total-banner .lbl{font-size:13px; opacity:.85; letter-spacing:1px}
+.budget-total-banner .val{font-size:34px; font-weight:800; font-variant-numeric:tabular-nums; letter-spacing:1px}
+.budget-total-banner .sub{font-size:12.5px; opacity:.8; text-align:right; line-height:1.7}
+
+table.budget{width:100%; border-collapse:collapse; table-layout:fixed; background:#fff}
+table.budget th,table.budget td{border:1px solid var(--line); padding:6px 8px; vertical-align:middle}
+table.budget thead th{background:var(--blue-tint); font-weight:800; font-size:13px; text-align:center}
+table.budget .rl{background:var(--blue-pale); font-weight:800; font-size:13px; color:var(--ink-2); text-align:center; width:76px}
+table.budget .gl{background:#F6F8FC; font-weight:700; font-size:12.5px; color:var(--ink-2); text-align:center}
+table.budget .calc{background:#FBFCFE; font-weight:800; color:var(--blue-deep); text-align:right; font-variant-numeric:tabular-nums}
+table.budget .calc.grand{background:var(--blue-soft); font-size:15px; color:var(--blue-deep)}
+table.budget input{width:100%; border:1px solid transparent; background:transparent; text-align:center; padding:4px 2px; border-radius:5px; outline:none; font-size:13.5px}
+table.budget input:focus{border-color:var(--blue); background:#fff; box-shadow:0 0 0 3px rgba(72,116,203,.12)}
+table.budget input.num{text-align:right}
+table.budget .ck{display:inline-flex; align-items:center; gap:4px; font-size:12.5px; white-space:nowrap; cursor:pointer; user-select:none}
+table.budget .ck input{width:15px; height:15px; accent-color:var(--blue)}
+table.budget .lbl-cell{font-size:12.5px; color:var(--muted); text-align:center; font-weight:600}
+
+.order-sheet{
+  background:#fff; border:2px solid #000; padding:16px 18px 14px; max-width:1240px; margin:0 auto;
+  font-size:13px; color:#000;
+}
+.os-tools{display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:8px; flex-wrap:wrap}
+.os-title{font-size:22px; font-weight:700; text-align:center; letter-spacing:4px; color:#000}
+.os-code{text-align:center; font-size:12px; margin:2px 0 8px; color:#000}
+.version-bar{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:12px}
+.version-bar .note{font-size:12.5px; color:#A85A16; background:#FDEEDF; padding:4px 10px; border-radius:6px; font-weight:700}
+.ver-tab{padding:6px 14px; border-radius:7px; font-size:13px; font-weight:700; border:1px solid var(--line); color:var(--muted); background:#fff}
+.ver-tab.active{background:var(--blue); border-color:var(--blue); color:#fff}
+table.excel{border-collapse:collapse; width:100%; background:#fff; color:#000}
+table.excel th, table.excel td{border:1px solid #000; padding:3px 4px; text-align:center; font-size:12.5px; vertical-align:middle; min-height:24px; min-width:38px}
+table.excel th{font-weight:700; background:#fff}
+table.excel input{width:100%; border:none; background:transparent; text-align:center; font-size:12.5px; padding:3px 1px; outline:none; color:#000; -webkit-appearance:none; border-radius:0}
+table.excel input:focus{background:#FFF7E6}
+table.excel .st{font-weight:700}
+table.excel tfoot th, table.excel tfoot td{font-weight:700; background:#fff}
+table.excel .img-cell{padding:2px}
+table.excel .img-cell .img-grid{justify-content:center}
+.os-info-excel{width:100%; border-collapse:collapse; margin-bottom:8px}
+.os-info-excel td{border:1px solid #000; padding:5px 6px; font-size:13px; white-space:nowrap}
+.os-info-excel td.label{font-weight:700}
+.os-info-excel input{width:100%; border:none; background:transparent; font-size:13px; outline:none; padding:2px 4px}
+.os-info-excel input:focus{background:#FFF7E6}
+.os-notes-excel{font-size:11.5px; line-height:1.65; margin:10px 0 6px; color:#000}
+.os-addr-excel{width:100%; border-collapse:collapse; margin-top:6px}
+.os-addr-excel td{border:1px solid #000; padding:5px 8px; font-size:12.5px; vertical-align:top}
+.os-sign-excel{width:100%; border-collapse:collapse; margin-top:8px}
+.os-sign-excel td{border:1px solid #000; padding:6px 10px; font-size:13px}
+.os-sign-excel input{border:none; border-bottom:1px solid #000; width:120px; background:transparent; font-size:13px; outline:none; text-align:center}
+
+.img-grid{display:flex; flex-wrap:wrap; gap:4px}
+.img-thumb{position:relative; width:56px; height:56px; border:1px solid #999; border-radius:3px; overflow:hidden; background:#f0f0f0; flex:0 0 auto; display:inline-block}
+.img-thumb img{width:100%; height:100%; object-fit:cover; display:block; cursor:zoom-in}
+.img-thumb .x{position:absolute; top:0; right:0; background:rgba(0,0,0,.65); color:#fff; width:17px; height:17px; line-height:15px; text-align:center; font-size:12px; cursor:pointer; border:none; border-radius:0 0 0 4px; padding:0}
+.img-add{border:1px dashed #999; background:#fff; color:#666; border-radius:3px; min-width:56px; height:56px; cursor:pointer; font-size:12px; display:inline-flex; align-items:center; justify-content:center}
+.img-add:hover{border-color:var(--blue); color:var(--blue)}
+.cell-img-wrap{display:flex; align-items:center; gap:4px; flex-wrap:wrap; min-height:26px; border-radius:6px; padding:2px}
+.cell-img-wrap .img-thumb{width:40px; height:40px}
+.cell-img-wrap .img-add{min-width:36px; height:36px; font-size:11px}
+.side-card.imgs{aspect-ratio:auto; min-height:150px; align-items:stretch; justify-content:flex-start; padding:8px; cursor:default; border-style:solid}
+.side-card.imgs .side-imgs{flex:1; display:flex; flex-direction:column; gap:6px; overflow:auto; justify-content:flex-start}
+.side-card.imgs .img-grid{flex-direction:column}
+.side-card.imgs .img-thumb{width:100%; height:64px}
+.side-card.imgs .img-add{width:100%; height:34px}
+.side-card.drop-zone{position:relative; transition:.15s}
+.drop-hint{font-size:11px; color:var(--faint); text-align:center; margin-top:4px; flex-shrink:0; line-height:1.5}
+
+/* ===== 图片拖放区 ===== */
+[data-dropzone]{ transition:background .15s, box-shadow .15s; }
+[data-dropzone].drag-over{
+  background:#e3edff !important;
+  box-shadow: inset 0 0 0 2px var(--blue) !important;
+  border-radius:6px;
+}
+.side-card.drop-zone.drag-over{ background:#dbe6fa !important; box-shadow:0 0 0 3px rgba(72,116,203,.18) !important; }
+.img-cell.drag-over{ background:#e3edff !important; }
+
+/* ===== 图片放大灯箱 ===== */
+.lightbox{
+  position:fixed; inset:0; background:rgba(15,20,30,.9);
+  display:none; align-items:center; justify-content:center; z-index:9999;
+  cursor:zoom-out; padding:24px;
+}
+.lightbox.show{ display:flex; }
+.lightbox img{
+  max-width:94vw; max-height:90vh; object-fit:contain;
+  border-radius:6px; box-shadow:0 10px 60px rgba(0,0,0,.65); background:#fff;
+}
+.lightbox .lb-close{
+  position:absolute; top:14px; right:22px; color:#fff; font-size:30px;
+  line-height:1; cursor:pointer; opacity:.75; font-weight:700;
+}
+.lightbox .lb-close:hover{ opacity:1; }
+
+.cust-actions{display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap}
+.summary-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:8px; margin-top:12px}
+.summary-grid .sg{background:#FBFCFE; border:1px solid var(--line); border-radius:8px; padding:10px 8px; text-align:center}
+.summary-grid .sg label{display:block; font-size:12px; color:var(--muted); font-weight:700; margin-bottom:4px}
+.summary-grid .sg .v{font-size:17px; font-weight:800; color:var(--blue-deep); font-variant-numeric:tabular-nums}
+
+.tip-bar{
+  margin-top:16px; padding:12px 16px; border-radius:10px;
+  background:var(--orange-soft); border:1px solid #F6D3AC; color:#A85A16;
+  font-size:13px; line-height:1.6;
+}
+.tip-bar b{color:var(--orange); font-weight:800}
+
+.empty{text-align:center; padding:46px 20px; color:var(--faint); font-size:14px}
+.empty svg{width:46px;height:46px;fill:#D3DAE8; margin-bottom:10px}
+.empty .act{margin-top:12px}
+
+@media (max-width:1100px){
+  .sidebar{width:132px;flex-basis:132px;padding:12px 10px}
+  .summary-grid{grid-template-columns:repeat(4,1fr)}
+}
+@media (max-width:760px){
+  .topbar .brand{width:100%;border-right:none;border-bottom:1px solid var(--line-soft);justify-content:center;padding:8px}
+  .top-actions{width:100%;border-left:none;border-top:1px solid var(--line-soft);justify-content:center}
+  .layout{flex-direction:column}
+  .sidebar{width:100%;flex-basis:auto;flex-direction:row;flex-wrap:wrap;gap:10px;border-right:none;border-bottom:1px solid var(--line-soft)}
+  .side-card{width:88px;aspect-ratio:auto;height:86px;flex:0 0 88px}
+  .side-btn{margin-top:0}
+  .main{padding:14px 12px 28px}
+  .top-tab{font-size:16px;padding:12px 6px}
+  .summary-grid{grid-template-columns:repeat(2,1fr)}
+  .page-title{font-size:21px}
+  table.budget{min-width:920px}
+  .table-scroll{overflow-x:auto}
+  #libTable{min-width:640px}
+}
+.smart-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px 14px}
+.smart-grid .fi{margin:0}
+.smart-result{margin-top:12px;border:1px solid var(--line);border-radius:8px;background:var(--blue-pale);padding:12px}
+.smart-result h4{margin:0 0 8px;font-size:14px;display:flex;align-items:center;gap:8px}
+.smart-match{border:1px solid var(--blue);border-radius:8px;background:#fff;padding:10px 12px;margin-bottom:10px}
+.smart-match .nm{font-size:15px;font-weight:700;color:var(--blue)}
+.smart-match .pr{font-size:18px;font-weight:800;color:#c0392b;margin-left:8px}
+.smart-sims{width:100%;border-collapse:collapse;font-size:13px}
+.smart-sims th,.smart-sims td{border:1px solid var(--line);padding:5px 8px;text-align:left}
+.smart-sims th{background:var(--blue-pale);color:var(--muted);font-weight:600}
+.smart-sims .pick{cursor:pointer;color:var(--blue);font-weight:700;white-space:nowrap}
+
+/* ===================== 打印（A4 适配） ===================== */
+@media print{
+  @page { size: A4 portrait; margin: 8mm 8mm; }
+
+  html, body{
+    background:#fff !important; color:#000 !important;
+    height:auto !important; overflow:visible !important;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  body{ font-family:"SimSun","宋体",serif; font-size:10pt; }
+
+  /* 隐藏所有交互控件 */
+  .topbar, .sidebar, #sidebar, .top-actions, .sub-tabs, .mode-tabs, .version-bar,
+  .page-head, .os-tools, .tip-bar, .lib-toolbar, .drop-hint, .lightbox,
+  .panel-head .hint, .empty .act, .smart-result,
+  .btn, .img-add, .img-thumb .x,
+  #btnExportData, #btnImportData, #btnV1AddRow, #btnV1DelRow,
+  #btnV2AddRow, #btnV2DelRow, #btnSaveTemplate, #btnNewBudget { display:none !important; }
+
+  .layout{ display:block !important; }
+  .main{ display:block !important; padding:0 !important; overflow:visible !important; }
+
+  /* 面板 */
+  .panel{
+    margin:0 0 4mm 0 !important; padding:0 !important;
+    border:1px solid #000 !important; border-radius:0 !important;
+    box-shadow:none !important; background:#fff !important;
+    break-inside:auto; page-break-inside:auto;
+  }
+  .panel-head{
+    padding:2mm 3mm !important; border-bottom:1px solid #000 !important;
+    background:#fff !important; color:#000 !important;
+  }
+  .panel-head .t{ font-size:11pt !important; color:#000 !important; }
+  .panel-body{ padding:2mm 3mm !important; background:#fff !important; }
+  .panel-body.pad0{ padding:0 !important; }
+
+  /* 表格通用 */
+  table, table.grid, table.budget, table.excel{
+    width:100% !important; border-collapse:collapse !important;
+    background:#fff !important; color:#000 !important;
+    box-shadow:none !important; margin:0 auto !important;
+  }
+  table th, table td{
+    border:1px solid #000 !important; background:#fff !important;
+    color:#000 !important; border-radius:0 !important; box-shadow:none !important;
+    vertical-align:middle !important;
+  }
+  table.grid th, table.grid td{ padding:2px 3px !important; font-size:8.5pt !important; text-align:center !important; }
+  table.budget th, table.budget td{ padding:2px 3px !important; font-size:8.5pt !important; }
+  table.excel th, table.excel td{ padding:1px 2px !important; font-size:7.5pt !important; }
+  table.grid thead th, table.budget thead th, table.excel th,
+  table.budget .rl, table.budget .gl, table.budget .calc,
+  table.excel tfoot th, table.excel tfoot td{
+    background:#fff !important; color:#000 !important; font-weight:700 !important;
+  }
+  table.grid tbody tr:nth-child(even){ background:#fff !important; }
+
+  /* 输入框外观 */
+  input::placeholder, textarea::placeholder{ color:transparent !important; opacity:0 !important; }
+  input, select, textarea{
+    border:none !important; background:transparent !important; color:#000 !important;
+    box-shadow:none !important; -webkit-appearance:none; appearance:none;
+    padding:0 !important; font-size:inherit !important; text-align:center !important;
+  }
+  input.num, input[type=number], .cell-input.num{ text-align:right !important; }
+  .os-info-excel input, .os-info-excel td{ text-align:left !important; }
+  .cell-input{ width:100% !important; }
+
+  /* 订单表 */
+  .order-sheet{
+    border:1.5px solid #000 !important;
+    padding:3mm !important;
+    max-width:100% !important;
+    margin:0 auto !important;
+    font-size:8pt !important;
+    break-inside:auto;
+  }
+  .os-title{ font-size:14pt !important; letter-spacing:2px !important; }
+  .os-code{ font-size:7pt !important; margin:1mm 0 2mm !important; }
+  .os-notes-excel{ font-size:6.5pt !important; line-height:1.45 !important; margin:2mm 0 1mm !important; }
+  .os-info-excel td{ font-size:8pt !important; padding:1mm 1.5mm !important; }
+  .os-addr-excel td, .os-sign-excel td{ font-size:8pt !important; padding:1mm 1.5mm !important; }
+  .os-sign-excel input{ width:26mm !important; }
+  .excel .img-grid .img-thumb{ width:14mm !important; height:14mm !important; }
+
+  /* 报价记录 */
+  .rec-card{ border:none !important; box-shadow:none !important; margin:0 0 4mm 0 !important; border-radius:0 !important; }
+  .rec-head{ padding:2mm 0 !important; border-bottom:1px solid #000 !important; background:#fff !important; }
+  .rec-head .fi label{ color:#000 !important; font-size:7.5pt !important; }
+  .rec-head .fi input{ background:#fff !important; border:none !important; }
+  .quote-block{ padding:2mm 0 !important; border-bottom:1px solid #000 !important; }
+  .quote-price, .money, .strong, .red{ color:#000 !important; }
+  .tag{ background:#fff !important; color:#000 !important; border:1px solid #000 !important; }
+
+  /* 预算横幅 */
+  .budget-total-banner{
+    background:#fff !important; color:#000 !important;
+    border:1px solid #000 !important; border-radius:0 !important;
+    padding:2mm 3mm !important; margin:0 0 4mm 0 !important; box-shadow:none !important;
+  }
+  .budget-total-banner .lbl,
+  .budget-total-banner .val,
+  .budget-total-banner .sub{ color:#000 !important; opacity:1 !important; }
+  .budget-total-banner .val{ font-size:14pt !important; }
+
+  .rec-card, .quote-block{ break-inside:avoid; page-break-inside:avoid; }
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand"><span class="logo">报</span><span>半分纸艺 · 业务系统</span></div>
+  <nav class="top-tabs">
+    <button class="top-tab" data-view="quote">
+      <svg viewBox="0 0 24 24"><path d="M13 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-7-6zm-1 2.5L16.5 10H12V5.5zM8 13h8v2H8v-2zm0 4h5v2H8v-2z"/></svg>
+      报价表
+    </button>
+    <button class="top-tab" data-view="budget">
+      <svg viewBox="0 0 24 24"><path d="M12 2 4 6v6c0 5.5 3.4 9.7 8 10 4.6-.3 8-4.5 8-10V6l-8-4zm4 12H8v-2h8v2zm0-4H8V8h8v2z"/></svg>
+      预算表
+    </button>
+    <button class="top-tab" data-view="order">
+      <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-8 14H7v-2h4v2zm0-4H7v-2h4v2zm0-4H7V7h4v2zm6 8h-4v-2h4v2zm0-4h-4v-2h4v2zm0-4h-4V7h4v2z"/></svg>
+      订单表
+    </button>
+  </nav>
+  <div class="top-actions">
+    <span class="sync-status" id="syncStatus"><span class="dot"></span><span id="syncText">连接中…</span></span>
+    <button class="btn sm ghost" id="btnExportData" title="导出全部数据（含图片）为 JSON">📤 导出</button>
+    <button class="btn sm ghost" id="btnImportData" title="从 JSON 文件导入数据">📥 导入</button>
+    <input type="file" id="importFileInput" accept=".json" style="display:none">
+  </div>
+</header>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main class="main">
+
+    <section id="view-quote">
+      <div class="page-head">
+        <div>
+          <div class="page-title">报价表</div>
+          <div class="page-sub">报价库统一维护价格，报价记录支持同订单多报价、一键转预算表</div>
+        </div>
+        <button class="btn orange" id="btnNewQuoteRec">
+          <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>新增报价记录
+        </button>
+      </div>
+
+      <div class="sub-tabs">
+        <button class="sub-tab active" data-sub="quote-lib">报价库</button>
+        <button class="sub-tab" data-sub="quote-rec">报价记录</button>
+      </div>
+
+      <div id="quote-lib">
+        <div class="panel">
+          <div class="panel-body">
+            <div class="lib-toolbar">
+              <div class="search-box">
+                <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z"/></svg>
+                <input class="input" id="libSearch" placeholder="搜索样式名称 / 材质工艺…">
+              </div>
+              <button class="btn primary" id="btnAddLibItem">
+                <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>新增报价项
+              </button>
+            </div>
+            <div class="table-scroll">
+              <table class="grid" id="libTable">
+                <colgroup>
+                  <col style="width:22%"><col style="width:18%"><col style="width:13%"><col style="width:10%"><col style="width:21%"><col style="width:16%">
+                </colgroup>
+                <thead><tr>
+                  <th>样式名称</th><th>材质工艺</th><th>报价</th><th>单位</th><th>备注</th><th>操作</th>
+                </tr></thead>
+                <tbody id="libTbody"></tbody>
+              </table>
+            </div>
+            <div class="tip-bar"><b>报价库说明：</b>订单表、预算表输入“样式名称”时可从本库直接调出报价与材质工艺，避免重复录入。价格可随时编辑，全系统同步生效。</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="quote-rec" style="display:none">
+        <div id="recList"></div>
+      </div>
+    </section>
+
+    <section id="view-budget" style="display:none">
+      <div id="budget-main">
+        <div class="page-head">
+          <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+            <button class="btn ghost" id="btnBackToRecs">
+              <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>返回报价记录
+            </button>
+            <div>
+              <div class="page-title">预算表</div>
+              <div class="page-sub">手动录入与智能定价双模式，存为模板避免重复录入，可直接转为订单表</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mode-tabs">
+          <button class="mode-tab active" data-mode="manual"><b>模式一 · 手动录入</b><small>直接填写全部报价信息</small></button>
+          <button class="mode-tab" data-mode="smart"><b>模式二 · 智能定价</b><small>按价格库匹配 / 面积公式自动测算</small></button>
+        </div>
+
+        <div class="panel" id="smartPanel" style="display:none">
+          <div class="panel-head"><span class="t">智能定价测算</span><span class="hint">按价格库匹配 + 面积公式自动测算，相似售价一键选用</span></div>
+          <div class="panel-body">
+            <div class="smart-grid">
+              <div class="fi"><label>材质工艺分类</label><select class="input" id="s_mat"><option value="">全部</option></select></div>
+              <div class="fi"><label>材质</label><input class="input" id="s_material" placeholder="如 EVA / 皱纹纸 / 和纸 / 绒"></div>
+              <div class="fi"><label>花瓣数量</label><input class="input" id="s_petal" placeholder="如 22 或 3+4+5+5+5"></div>
+              <div class="fi"><label>尺寸</label><input class="input" id="s_size" placeholder="如 1.5m / 150cm / 铃兰12cm"></div>
+              <div class="fi"><label>长 × 宽（面积㎡）</label><input class="input" id="s_area" placeholder="如 1.5*0.4，留空按尺寸推算"></div>
+              <div class="fi"><label>数量</label><input class="input num" id="s_qty" type="number" min="1" step="1" value="1"></div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+              <button class="btn primary" id="btnSmartCalc">智能测算</button>
+              <button class="btn ghost" id="btnSmartClear">清空条件</button>
+            </div>
+            <div class="smart-result" id="smartResult" style="display:none"></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <span class="t">客户信息</span>
+            <span class="hint">与报价记录联动：转预算表时自动带入</span>
+          </div>
+          <div class="panel-body">
+            <div class="budget-top">
+              <div class="fi"><label>客户姓名</label><input class="input" id="b_customer" placeholder="请输入客户姓名"></div>
+              <div class="fi"><label>报价日期</label><input class="input" id="b_date" type="date"></div>
+              <div class="fi"><label>渠道</label><input class="input" id="b_channel" placeholder="如：微信 / 小红书"></div>
+              <div class="fi"><label>预计送货日期</label><input class="input" id="b_delivery" type="date"></div>
+              <div class="fi" style="max-width:280px"><label>送货地址</label><input class="input" id="b_address" placeholder="请输入送货地址"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="budget-total-banner" id="budgetBanner">
+          <div>
+            <div class="lbl">报价（显示明明是）</div>
+            <div class="val" id="budgetGrandTotal">¥0</div>
+          </div>
+          <div class="sub" id="budgetBreakdown"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <span class="t">预算明细</span>
+            <span class="hint">单价留空时可在报价库智能匹配</span>
+            <span style="display:flex;gap:8px">
+              <button class="btn" id="btnSaveTemplate">存为模板</button>
+              <button class="btn primary" id="btnNewBudget">创建新预算</button>
+            </span>
+          </div>
+          <div class="panel-body pad0 table-scroll">
+            <table class="budget" id="budgetTable">
+              <colgroup>
+                <col style="width:9%"><col style="width:15%"><col style="width:11%"><col style="width:10%"><col style="width:9%">
+                <col style="width:15%"><col style="width:11%"><col style="width:10%"><col style="width:9%">
+              </colgroup>
+              <thead>
+                <tr>
+                  <th rowspan="2">明细</th>
+                  <th colspan="4">主材 / 铁丝 / 人工</th>
+                  <th colspan="4">颜料 / 花蕊 / 颜料人工</th>
+                </tr>
+                <tr>
+                  <th>参数</th><th>数量</th><th>单价</th><th>合计</th>
+                  <th>参数</th><th>数量</th><th>单价</th><th>合计</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- 名称行：名称横跨参数/数量/单价/合计 4 列 -->
+                <tr>
+                  <td class="rl">样式名称</td>
+                  <td class="gl" colspan="4"><input id="m_name" list="libList" placeholder="从报价库选名称" autocomplete="off"></td>
+                  <td class="gl" colspan="4"><input id="p_material" list="libList" placeholder="颜料材质" autocomplete="off"></td>
+                </tr>
+                <!-- 规格行：数量在前、单价在后，合计落在本行 -->
+                <tr>
+                  <td class="rl">规格</td>
+                  <td><input id="m_spec" placeholder="规格（cm）"></td>
+                  <td><input class="num" id="m_qty" type="number" min="0" step="1" placeholder="数量"></td>
+                  <td><input class="num" id="m_price" type="number" min="0" step="0.01" placeholder="单价"></td>
+                  <td class="calc" id="m_sub">0</td>
+                  <td><input id="p_sided" placeholder="单/双面"></td>
+                  <td><input class="num" id="p_qty" type="number" min="0" step="1" placeholder="数量"></td>
+                  <td><input class="num" id="p_price" type="number" min="0" step="0.01" placeholder="单价"></td>
+                  <td class="calc" id="p_sub">0</td>
+                </tr>
+                <tr>
+                  <td class="rl">铁丝</td>
+                  <td class="gl">
+                    <label class="ck"><input type="checkbox" id="w_byRoot" checked> 按根算</label>
+                    <label class="ck"><input type="checkbox" id="w_byArea"> 按面积算</label>
+                  </td>
+                  <td><input class="num" id="w_qty" type="number" min="0" step="1" placeholder="根数/面积"></td>
+                  <td><input class="num" id="w_price" type="number" min="0" step="0.01" placeholder="单价"></td>
+                  <td class="calc" id="w_sub">0</td>
+                  <td class="gl">花蕊</td>
+                  <td><input class="num" id="c_qty" type="number" min="0" step="1" placeholder="数量"></td>
+                  <td><input class="num" id="c_price" type="number" min="0" step="0.01" placeholder="单价"></td>
+                  <td class="calc" id="c_sub">0</td>
+                </tr>
+                <tr>
+                  <td class="rl">人工</td>
+                  <td class="gl">
+                    <label class="ck"><input type="checkbox" id="w_texture"> 纹理</label>
+                    <label class="ck"><input type="checkbox" id="w_assembly"> 组装</label>
+                    <input id="m_laborNote" placeholder="工艺说明" style="margin-top:4px">
+                  </td>
+                  <td><input class="num" id="l_hours" type="number" min="0" step="0.5" placeholder="小时数"></td>
+                  <td><input class="num" id="l_price" type="number" min="0" step="0.01" placeholder="人工单价"></td>
+                  <td class="calc" id="l_sub">0</td>
+                  <td class="gl">颜料人工</td>
+                  <td><input class="num" id="pl_qty" type="number" min="0" step="1" placeholder="数量"></td>
+                  <td><input class="num" id="pl_price" type="number" min="0" step="0.01" placeholder="单价"></td>
+                  <td class="calc" id="pl_sub">0</td>
+                </tr>
+                <tr>
+                  <td class="rl">订购数量 / 备注</td>
+                  <td><input id="m_orderQty" placeholder="订购数量"></td>
+                  <td colspan="2" style="text-align:left;font-size:12.5px;color:var(--muted)" id="m_meta"></td>
+                  <td class="calc grand" id="m_total">0</td>
+                  <td colspan="3" style="text-align:left;font-size:12.5px;color:var(--muted)" id="p_meta"></td>
+                  <td class="calc grand" id="p_total">0</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="panel-body">
+            <div class="panel-head" style="padding:0 0 10px"><span class="t">辅料售价</span><span class="hint">花杆 / 底座 / 叶子 / 灯</span></div>
+            <div class="table-scroll">
+              <table class="budget" id="accTable">
+                <colgroup>
+                  <col style="width:9%"><col style="width:16%"><col style="width:8%"><col style="width:8%"><col style="width:8%"><col style="width:10%">
+                  <col style="width:16%"><col style="width:8%"><col style="width:8%"><col style="width:8%"><col style="width:10%">
+                </colgroup>
+                <thead><tr>
+                  <th rowspan="2">辅料</th>
+                  <th colspan="5">花杆</th>
+                  <th colspan="5">底座</th>
+                </tr>
+                <tr><th>尺寸</th><th>数量</th><th>单价</th><th>合计</th><th>材质</th><th>尺寸</th><th>数量</th><th>单价</th><th>合计</th><th>材质</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="rl">辅料售价</td>
+                    <td><input id="a1_size" placeholder="尺寸"></td>
+                    <td><input class="num" id="a1_qty" type="number" min="0" step="1" placeholder="数量"></td>
+                    <td><input class="num" id="a1_price" type="number" min="0" step="0.01" placeholder="单价"></td>
+                    <td class="calc" id="a1_sub">0</td>
+                    <td><input id="a1_mat" placeholder="材质"></td>
+                    <td><input id="a2_size" placeholder="尺寸"></td>
+                    <td><input class="num" id="a2_qty" type="number" min="0" step="1" placeholder="数量"></td>
+                    <td><input class="num" id="a2_price" type="number" min="0" step="0.01" placeholder="单价"></td>
+                    <td class="calc" id="a2_sub">0</td>
+                    <td><input id="a2_mat" placeholder="材质"></td>
+                  </tr>
+                  <tr>
+                    <td class="rl"></td>
+                    <th colspan="5" style="text-align:center;background:var(--blue-pale);font-size:12.5px">叶子</th>
+                    <th colspan="5" style="text-align:center;background:var(--blue-pale);font-size:12.5px">灯</th>
+                  </tr>
+                  <tr>
+                    <td class="rl">辅料售价</td>
+                    <td><input id="a3_size" placeholder="尺寸"></td>
+                    <td><input class="num" id="a3_qty" type="number" min="0" step="1" placeholder="数量"></td>
+                    <td><input class="num" id="a3_price" type="number" min="0" step="0.01" placeholder="单价"></td>
+                    <td class="calc" id="a3_sub">0</td>
+                    <td><input id="a3_mat" placeholder="材质"></td>
+                    <td><input id="a4_size" placeholder="尺寸"></td>
+                    <td><input class="num" id="a4_qty" type="number" min="0" step="1" placeholder="数量"></td>
+                    <td><input class="num" id="a4_price" type="number" min="0" step="0.01" placeholder="单价"></td>
+                    <td class="calc" id="a4_sub">0</td>
+                    <td><input id="a4_mat" placeholder="材质"></td>
+                  </tr>
+                  <tr>
+                    <td class="rl">总计</td>
+                    <td colspan="4" class="gl">花头总计</td>
+                    <td class="calc grand" id="headTotal">0</td>
+                    <td colspan="4" class="gl">辅料总计</td>
+                    <td class="calc grand" id="accTotal">0</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn orange" id="btnToCustBudget">转为报客户预算表</button>
+          <button class="btn primary" id="btnBudgetToOrder">转为订单表</button>
+        </div>
+        <div class="tip-bar"><b>提示：</b>手动录入的单价在报价库里选填，可保存模板，以免下次重新输入；“转为订单表”可将当前预算一键生成订单。</div>
+      </div>
+
+      <div id="budget-cust" style="display:none">
+        <div class="page-head">
+          <div>
+            <div class="page-title">报客户预算表</div>
+            <div class="page-sub">面向客户的报价单：不含成本项，仅展示产品明细与合计</div>
+          </div>
+          <button class="btn ghost" id="btnBackToBudget">返回预算表</button>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><span class="t">客户信息</span></div>
+          <div class="panel-body table-scroll">
+            <table class="grid">
+              <colgroup><col style="width:20%"><col style="width:20%"><col style="width:20%"><col style="width:20%"><col style="width:20%"></colgroup>
+              <thead><tr><th>客户姓名</th><th>报价日期</th><th>联系方式</th><th>预计送货日期</th><th>送货地址</th></tr></thead>
+              <tbody><tr>
+                <td class="center" id="cb_customer">—</td>
+                <td class="center" id="cb_date">—</td>
+                <td class="center"><input class="cell-input" id="cb_phone" placeholder="联系电话"></td>
+                <td class="center" id="cb_delivery">—</td>
+                <td class="center" id="cb_address">—</td>
+              </tr></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><span class="t">产品明细</span><span class="hint">主材 / 辅料合并展示</span></div>
+          <div class="panel-body table-scroll">
+            <table class="grid" id="cbDetailTable">
+              <colgroup>
+                <col style="width:6%"><col style="width:19%"><col style="width:19%"><col style="width:12%"><col style="width:12%"><col style="width:12%"><col style="width:12%"><col style="width:8%">
+              </colgroup>
+              <thead><tr><th>序号</th><th>样式名称</th><th>材质工艺</th><th>尺寸</th><th>单价</th><th>数量</th><th>合计</th><th>备注</th></tr></thead>
+              <tbody id="cbTbody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><span class="t">费用汇总</span></div>
+          <div class="panel-body">
+            <div class="summary-grid">
+              <div class="sg"><label>合计</label><div class="v" id="cb_t1">0</div></div>
+              <div class="sg"><label>运费</label><div class="v"><input class="cell-input num" id="cb_freight" value="0"></div></div>
+              <div class="sg"><label>铁艺</label><div class="v"><input class="cell-input num" id="cb_iron" value="0"></div></div>
+              <div class="sg"><label>安装</label><div class="v"><input class="cell-input num" id="cb_install" value="0"></div></div>
+              <div class="sg"><label>数量合计</label><div class="v" id="cb_qty">0</div></div>
+              <div class="sg"><label>金额合计</label><div class="v" id="cb_amount">0</div></div>
+              <div class="sg"><label>优惠</label><div class="v"><input class="cell-input num" id="cb_discount" value="0"></div></div>
+            </div>
+            <div class="tip-bar" style="margin-top:14px"><b>金额合计</b>＝合计＋运费＋铁艺＋安装－优惠，实时计算。</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="view-order" style="display:none">
+      <div class="page-head">
+        <div>
+          <div class="page-title">订单表</div>
+          <div class="page-sub">订单表分三个版本，自动匹配合适版本；输入名称可从报价库直接调出价格</div>
+        </div>
+        <button class="btn orange" id="btnNewOrder">
+          <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>新建订单
+        </button>
+      </div>
+
+      <div class="sub-tabs">
+        <button class="sub-tab active" data-sub="order-price">订单价格表</button>
+        <button class="sub-tab" data-sub="order-make">制作表</button>
+      </div>
+
+      <div class="version-bar">
+        <span class="note">订单表分三个版本，自动匹配合适版本</span>
+        <button class="ver-tab active" data-ver="1">版本一</button>
+        <button class="ver-tab" data-ver="2">版本二</button>
+        <button class="ver-tab" data-ver="3">版本三</button>
+      </div>
+
+      <div class="order-sheet">
+        <div class="os-tools">
+          <div>
+            <div class="os-title">半分纸艺订单表</div>
+            <div class="os-code">chengdu，bfzy-2026-order，版本：<span id="osVersion">一</span></div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn ghost sm" id="btnOrderPrint">打印 / 导出</button>
+            <button class="btn primary sm" id="btnOrderSave">保存订单</button>
+          </div>
+        </div>
+
+        <table class="os-info-excel">
+          <tr>
+            <td class="label">客户名称:</td><td><input id="o_customer" placeholder="客户名称"></td>
+            <td class="label">送货时间:</td><td><input id="o_delivery" placeholder="送货时间"></td>
+            <td class="label">收货方式:</td><td style="text-align:left">自提（ ）/ 发货（√）</td>
+          </tr>
+          <tr>
+            <td class="label">联系方式:</td><td><input id="o_phone" placeholder="联系电话"></td>
+            <td class="label">送货地址:</td><td><input id="o_address" placeholder="送货地址"></td>
+            <td class="label">订单类型:</td><td style="text-align:left">定制（√）</td>
+          </tr>
+        </table>
+
+        <div id="orderV1" class="table-scroll">
+          <table class="excel" id="orderV1Table"></table>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button class="btn sm" id="btnV1AddRow">+ 添加一行</button>
+            <button class="btn sm ghost" id="btnV1DelRow">- 删除末行</button>
+          </div>
+        </div>
+
+        <div id="orderV2" style="display:none">
+          <div class="table-scroll">
+            <table class="excel" id="orderV2Table"></table>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button class="btn sm" id="btnV2AddRow">+ 添加一行</button>
+            <button class="btn sm ghost" id="btnV2DelRow">- 删除末行</button>
+          </div>
+        </div>
+
+        <div class="os-notes-excel">
+          注：·此订单表为2026年半分纸艺最新订单表格式，最终解释权归半分纸艺所有。·发货订单须提前告知收货地址，运费由买家支付，发货前拍视频/照片确认数量，买家须支付尾款。
+          ·产品颜色皆为手工调色，手机拍摄会产生色差。请以实物为准。若对颜色有严格的要求，请联系客服购买小样，邮寄到付。·为减小体积，降低运货成本，产品都是压缩发货，拿到产品须自行调整状态。
+          ·花头尺寸以展开后花朵呈现最佳状态直径为准，人工测量误差会有1-5CM。·交货时间以半分纸艺排单表为准，如需急单，请提前告知。
+        </div>
+
+        <table class="os-addr-excel">
+          <tr>
+            <td style="width:42%">ADD：成都市金牛区金华寺南路115号半分纸艺工作室</td>
+            <td style="width:30%">TELL：18512878785</td>
+            <td>销售：肖</td>
+          </tr>
+        </table>
+        <table class="os-sign-excel">
+          <tr>
+            <td style="width:33%">定金：<span id="o_deposit_view"></span></td>
+            <td style="width:33%">尾款：<span id="o_balance_view"></span></td>
+            <td>签收：</td>
+          </tr>
+        </table>
+      </div>
+    </section>
+  </main>
+</div>
+
+<datalist id="libList"></datalist>
+<datalist id="libMatList"></datalist>
+
+<!-- 图片放大灯箱 -->
+<div class="lightbox" id="lightbox">
+  <span class="lb-close" id="lbClose">×</span>
+  <img id="lightboxImg" alt="预览">
+</div>
+
+<script>
+/* ================= Supabase 云同步 ================= */
+const SUPABASE_URL = 'https://evwiybzodraxzxrjosrs.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_OWCPSt65AWrsBXtTBhi1Zg_5oX1zeM6';
+const supa = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY) : null;
+
+const CLOUD_TABLE = 'bfzy_app';
+const CLOUD_KEYS = ['library','quotes','budget','budgetTemplate','order','cust','libVersion'];
+let supaReady = !!supa;
+
+function setSyncStatus(text, isErr){
+  const el = document.getElementById('syncStatus');
+  const txt = document.getElementById('syncText');
+  if (!el || !txt) return;
+  txt.textContent = text;
+  el.classList.toggle('err', !!isErr);
+}
+
+let pushTimer = null;
+let pendingClean = null;
+function schedulePush(clean){
+  pendingClean = clean;
+  if (pushTimer) clearTimeout(pushTimer);
+  pushTimer = setTimeout(doPush, 900);
+}
+async function doPush(){
+  pushTimer = null;
+  if (!supaReady || !pendingClean) return;
+  const clean = pendingClean;
+  pendingClean = null;
+  try {
+    const rows = CLOUD_KEYS.map(k => ({ key: k, data: clean[k] !== undefined ? clean[k] : null }));
+    const { error } = await supa.from(CLOUD_TABLE).upsert(rows, { onConflict: 'key' });
+    if (error) throw error;
+    setSyncStatus('已同步', false);
+  } catch(e){
+    console.warn('[cloud] push failed', e);
+    setSyncStatus('云端同步失败（本地已保存）', true);
+  }
+}
+
+async function pullFromCloud(){
+  if (!supaReady){ setSyncStatus('离线模式（本地数据）', true); return false; }
+  try {
+    setSyncStatus('同步中…', false);
+    const { data, error } = await supa.from(CLOUD_TABLE).select('*');
+    if (error) throw error;
+    if (!data || !data.length){
+      save();
+      setSyncStatus('已同步', false);
+      return true;
+    }
+    const cloud = {};
+    data.forEach(r => { cloud[r.key] = r.data; });
+
+    const imgStore = getImgStore();
+
+    if (cloud.library) store.library = cloud.library;
+    if (cloud.quotes) store.quotes = cloud.quotes;
+    if (cloud.budget !== undefined) store.budget = cloud.budget;
+    if (cloud.budgetTemplate !== undefined) store.budgetTemplate = cloud.budgetTemplate;
+    if (cloud.order !== undefined) store.order = cloud.order;
+    if (cloud.cust !== undefined) store.cust = cloud.cust;
+    if (cloud.libVersion) store.libVersion = cloud.libVersion;
+
+    restoreImages(store, imgStore);
+
+    ensureIds(store);
+    const imgStore2 = getImgStore();
+    const clean = extractImages(store, imgStore2);
+    setImgStore(imgStore2);
+    try { localStorage.setItem(K, JSON.stringify(clean)); } catch(e){}
+
+    setSyncStatus('已同步', false);
+    return true;
+  } catch(e){
+    console.warn('[cloud] pull failed', e);
+    setSyncStatus('云端读取失败（本地数据）', true);
+    return false;
+  }
+}
+
+/* ================= 数据层 ================= */
+const K = 'bfzy_sys_v1';
+const IMG_KEY = 'bfzy_imgs_v1';
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const num = v => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
+const fmt = n => '¥' + (Math.round(n * 100) / 100).toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+const today = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); };
+let uid = 1;
+const nid = () => 'id' + (uid++) + '_' + Date.now().toString(36);
+
+function getImgStore(){
+  try { return JSON.parse(localStorage.getItem(IMG_KEY) || '{}'); } catch(e){ return {}; }
+}
+function setImgStore(m){
+  try { localStorage.setItem(IMG_KEY, JSON.stringify(m)); }
+  catch(e){ console.warn('图片本地存储失败（可能容量超限）', e); }
+}
+
+function ensureIds(s){
+  (s.quotes || []).forEach(q => {
+    (q.blocks || []).forEach(b => {
+      (b.items || []).forEach(it => {
+        if (!it._iid) it._iid = nid();
+      });
+    });
+  });
+  if (s.order){
+    (s.order.rows || []).forEach(r => { if (!r._rid) r._rid = nid(); });
+    (s.order.v2 || []).forEach(r => { if (!r._rid) r._rid = nid(); });
+  }
+}
+
+function extractImages(s, imgStore){
+  const clean = JSON.parse(JSON.stringify(s));
+
+  if (clean.sideImgs){
+    Object.keys(clean.sideImgs).forEach(zone => {
+      const arrs = clean.sideImgs[zone] || [];
+      arrs.forEach((arr, i) => {
+        if (Array.isArray(arr) && arr.length){
+          imgStore['side_' + zone + '_' + i] = arr.slice();
+        }
+        arrs[i] = [];
+      });
+    });
+  }
+
+  (clean.quotes || []).forEach(q => {
+    const recKey = 'rec_' + q.id;
+    if (Array.isArray(q.imgs) && q.imgs.length) imgStore[recKey] = q.imgs.slice();
+    q.imgs = [];
+    (q.blocks || []).forEach(b => {
+      (b.items || []).forEach(it => {
+        const key = 'q_' + q.id + '_b_' + b.id + '_i_' + it._iid;
+        if (Array.isArray(it.remarkImgs) && it.remarkImgs.length) imgStore[key + '_remark'] = it.remarkImgs.slice();
+        if (Array.isArray(it.descImgs) && it.descImgs.length) imgStore[key + '_desc'] = it.descImgs.slice();
+        it.remarkImgs = [];
+        it.descImgs = [];
+      });
+    });
+  });
+
+  if (clean.order){
+    (clean.order.rows || []).forEach(r => {
+      const key = 'or_' + r._rid;
+      if (Array.isArray(r.img) && r.img.length) imgStore[key] = r.img.slice();
+      r.img = [];
+    });
+    (clean.order.v2 || []).forEach(r => {
+      const key = 'ov2_' + r._rid;
+      if (Array.isArray(r.img) && r.img.length) imgStore[key] = r.img.slice();
+      r.img = [];
+    });
+  }
+  return clean;
+}
+
+function restoreImages(s, imgStore){
+  if (s.sideImgs){
+    Object.keys(s.sideImgs).forEach(zone => {
+      const arrs = s.sideImgs[zone] || [];
+      arrs.forEach((arr, i) => {
+        const key = 'side_' + zone + '_' + i;
+        if (Array.isArray(imgStore[key]) && imgStore[key].length) arrs[i] = imgStore[key].slice();
+      });
+    });
+  }
+
+  (s.quotes || []).forEach(q => {
+    const recKey = 'rec_' + q.id;
+    if (Array.isArray(imgStore[recKey])) q.imgs = imgStore[recKey].slice();
+    else if (!Array.isArray(q.imgs)) q.imgs = [];
+    (q.blocks || []).forEach(b => {
+      (b.items || []).forEach(it => {
+        if (!it._iid) it._iid = nid();
+        const key = 'q_' + q.id + '_b_' + b.id + '_i_' + it._iid;
+        if (Array.isArray(imgStore[key + '_remark'])) it.remarkImgs = imgStore[key + '_remark'].slice();
+        if (Array.isArray(imgStore[key + '_desc'])) it.descImgs = imgStore[key + '_desc'].slice();
+      });
+    });
+  });
+
+  if (s.order){
+    (s.order.rows || []).forEach(r => {
+      if (!r._rid) r._rid = nid();
+      const key = 'or_' + r._rid;
+      if (Array.isArray(imgStore[key])) r.img = imgStore[key].slice();
+    });
+    (s.order.v2 || []).forEach(r => {
+      if (!r._rid) r._rid = nid();
+      const key = 'ov2_' + r._rid;
+      if (Array.isArray(imgStore[key])) r.img = imgStore[key].slice();
+    });
+  }
+}
+
+/* ---------- 报价库种子数据（完整保留） ---------- */
+const SEED_LIB = [
+  {id:1, name:'花杆16管', material:'杆/底/叶', price:8.0, unit:'m', note:'8元/m；花朵直径30cm以下'},
+  {id:2, name:'花杆20管', material:'杆/底/叶', price:10.0, unit:'m', note:'10元/m；花朵直径30-60cm'},
+  {id:3, name:'花杆25管', material:'杆/底/叶', price:15.0, unit:'m', note:'15元/m；花朵直径60-100cm'},
+  {id:4, name:'花杆32管', material:'杆/底/叶', price:20.0, unit:'m', note:'20元/m；花朵直径1m-2m'},
+  {id:5, name:'20cm底座', material:'杆/底/叶', price:25.0, unit:'个', note:'25元/个；花朵直径50cm以下'},
+  {id:6, name:'25cm底座', material:'杆/底/叶', price:40.0, unit:'个', note:'40元/个；花朵直径50-80cm'},
+  {id:7, name:'三孔30cm', material:'杆/底/叶', price:28.0, unit:'个', note:'28元/个；轻薄（适合轻型花朵或不弯头花朵）'},
+  {id:8, name:'25cm单杆', material:'杆/底/叶', price:15.0, unit:'个', note:'15元/个；轻薄（适合轻型花朵或不弯头花朵）'},
+  {id:9, name:'30cm双孔', material:'杆/底/叶', price:32.0, unit:'个', note:'32元/个；轻薄（适合轻型花朵或不弯头花朵）'},
+  {id:10, name:'EVA单面叶子20cm', material:'杆/底/叶', price:14.0, unit:'张', note:'14元/张；12元/张'},
+  {id:11, name:'EVA单面叶子30cm', material:'杆/底/叶', price:16.0, unit:'张', note:'16元/张；14元/张'},
+  {id:12, name:'EVA单面叶子40cm', material:'杆/底/叶', price:20.0, unit:'张', note:'20元/张；16元/张'},
+  {id:13, name:'EVA单面叶子50cm', material:'杆/底/叶', price:22.0, unit:'张', note:'22元/张；20元/张'},
+  {id:14, name:'EVA单面叶子60cm', material:'杆/底/叶', price:28.0, unit:'张', note:'28元/张；24元/张'},
+  {id:15, name:'EVA单面叶子70cm', material:'杆/底/叶', price:33.0, unit:'张', note:'33元/张；28元/张'},
+  {id:16, name:'EVA单面叶子80cm', material:'杆/底/叶', price:40.0, unit:'张', note:'40元/张；35元/张'},
+  {id:17, name:'EVA单面叶子100cm', material:'杆/底/叶', price:56.0, unit:'张', note:'56元/张；45元/张'},
+  {id:18, name:'EVA单面叶子120cm', material:'杆/底/叶', price:70.0, unit:'张', note:'70元/张；66元/张'},
+  {id:19, name:'EVA单面叶子150cm', material:'杆/底/叶', price:100.0, unit:'张', note:'100元/张；85元/张'},
+  {id:20, name:'和纸双面叶子20cm', material:'杆/底/叶', price:12.0, unit:'张', note:'12元/张；17元/张'},
+  {id:21, name:'和纸双面叶子30cm', material:'杆/底/叶', price:16.0, unit:'张', note:'16元/张；22元/张'},
+  {id:22, name:'和纸双面叶子40cm', material:'杆/底/叶', price:20.0, unit:'张', note:'20元/张；26元/张'},
+  {id:23, name:'和纸双面叶子50cm', material:'杆/底/叶', price:25.0, unit:'张', note:'25元/张；30元/张'},
+  {id:24, name:'和纸双面叶子60cm', material:'杆/底/叶', price:35.0, unit:'张', note:'35元/张；37元/张'},
+  {id:25, name:'和纸双面叶子70cm', material:'杆/底/叶', price:45.0, unit:'张', note:'45元/张；50元/张'},
+  {id:26, name:'和纸双面叶子80cm', material:'杆/底/叶', price:50.0, unit:'张', note:'50元/张；54元/张'},
+  {id:27, name:'和纸双面叶子100cm', material:'杆/底/叶', price:70.0, unit:'张', note:'70元/张；75元/张'},
+  {id:28, name:'和纸双面叶子120cm', material:'杆/底/叶', price:95.0, unit:'张', note:'95元/张；98元/张'},
+  {id:29, name:'和纸双面叶子150cm', material:'杆/底/叶', price:109.0, unit:'张', note:'109元/张；115元/张'},
+  {id:30, name:'长150cm 宽40cm以下 白', material:'大型纸艺/绒', price:30, unit:'片', note:'28-32元/片；不含组装；纸：'},
+  {id:31, name:'长150cm 宽40cm以下 彩', material:'大型纸艺/绒', price:48, unit:'片', note:'45-50元/片；不含组装；单片按平方算'},
+  {id:32, name:'长150cm 宽40cm—80cm 白', material:'大型纸艺/绒', price:88, unit:'片', note:'80-95元/片；不含组装'},
+  {id:33, name:'长150cm 宽40cm—80cm 彩', material:'大型纸艺/绒', price:110, unit:'片', note:'100-120元/片；不含组装；人工成本'},
+  {id:34, name:'长度超过1.5m 宽40以下 白色', material:'大型纸艺/绒', price:35.0, unit:'m', note:'35元/m；彩色售40'},
+  {id:35, name:'长度超过1.5m 宽40-80cm 白色', material:'大型纸艺/绒', price:68, unit:'m', note:'国产纸65--70元/m；进口纸纸90元/m'},
+  {id:36, name:'长度75cm以下 宽40cm以下 白', material:'大型纸艺/绒', price:18.0, unit:'片', note:'18元/片；彩色售25'},
+  {id:37, name:'长度75cm以下 宽40-80cm 白', material:'大型纸艺/绒', price:35.0, unit:'片', note:'35元/片；彩色售40；EVA'},
+  {id:38, name:'白色 高1m 10-15片花瓣', material:'大型纸艺/绒', price:158.0, unit:'个', note:'158；彩色售268；EVA材料费：'},
+  {id:39, name:'白色 高1.2m 10-15片花瓣', material:'大型纸艺/绒', price:180.0, unit:'个', note:'180；彩色售280；粘贴人工按平方算（成本）'},
+  {id:40, name:'白色 高1.4m 10-15片花瓣', material:'大型纸艺/绒', price:260.0, unit:'个', note:'260；彩色售380；组装和花蕊视情况而定'},
+  {id:41, name:'白色 高1.6m 10-15片花瓣', material:'大型纸艺/绒', price:395.0, unit:'个', note:'395；彩色售500；上色人工按平方算（成本）'},
+  {id:42, name:'白色 高1.8m 10-15片花瓣', material:'大型纸艺/绒', price:465.0, unit:'个', note:'465；彩色售600'},
+  {id:43, name:'白色 高2m 10-15片花瓣', material:'大型纸艺/绒', price:600.0, unit:'个', note:'600；彩色售760；颜料按平方算（成本）'},
+  {id:44, name:'白色 高2.2m 10-15片花瓣', material:'大型纸艺/绒', price:735.0, unit:'个', note:'735；彩色售920；*双面'},
+  {id:45, name:'白色 高2.5m 10-15片花瓣', material:'大型纸艺/绒', price:850.0, unit:'个', note:'850；彩色售1200；铁丝按平方算（成本）'},
+  {id:46, name:'白色 高3m 10-16片花瓣', material:'大型纸艺/绒', price:1300, unit:'个', note:'1200-1400；彩色售1500-1800；EVA、纸、绒通用'},
+  {id:47, name:'白色 高5m 50片花瓣', material:'大型纸艺/绒', price:6800.0, unit:'个', note:'6800；彩色售8000'},
+  {id:48, name:'不圈边上色（装置整体长宽）', material:'大型纸艺/绒', price:960.0, unit:'m', note:'960/m；二零架50/m+90/个底座+50车费'},
+  {id:49, name:'圈边价格（装置整体长宽）', material:'大型纸艺/绒', price:1160.0, unit:'m', note:'1160/m'},
+  {id:50, name:'白色不圈边（装置整体长宽）', material:'大型纸艺/绒', price:800.0, unit:'m', note:'800/m'},
+  {id:51, name:'白色圈边（装置整体长宽）', material:'大型纸艺/绒', price:900.0, unit:'m', note:'900/m'},
+  {id:52, name:'1.5m*0.75', material:'大型纸艺/绒', price:88, unit:'片', note:'85-90元/片；不含组装'},
+  {id:53, name:'1.2m*0.6', material:'大型纸艺/绒', price:78, unit:'片', note:'75-80元/片；不含组装'},
+  {id:54, name:'1m*0.5', material:'大型纸艺/绒', price:65, unit:'片', note:'60-70元/片；不含组装'},
+  {id:55, name:'0.8m*0.4', material:'大型纸艺/绒', price:55, unit:'片', note:'50-60元/片；不含组装'},
+  {id:56, name:'0.6m*0.3', material:'大型纸艺/绒', price:40.0, unit:'片', note:'40元/片；不含组装'},
+  {id:57, name:'1.4m-4m组装好花朵总长度（圈边）', material:'大型纸艺/绒', price:70, unit:'片', note:'60-80元/片；不含组装'},
+  {id:58, name:'3m一朵（20片）', material:'大型纸艺/绒', price:1680.0, unit:'朵', note:'1680元/朵；（绒16m）'},
+  {id:59, name:'2m一朵（20片）', material:'大型纸艺/绒', price:900.0, unit:'朵', note:'900元/朵；（绒）'},
+  {id:60, name:'2.5m一朵（20片）', material:'大型纸艺/绒', price:1100.0, unit:'朵', note:'1100元/朵；（绒14m）'},
+  {id:61, name:'1.5m一朵（18片）', material:'大型纸艺/绒', price:680.0, unit:'朵', note:'680元/朵'},
+  {id:62, name:'渐变五瓣花1.2m', material:'EVA花', price:258.0, unit:'个', note:'258；花蕊35cm长/20+4根；厚度3mm'},
+  {id:63, name:'四叶草0.55m', material:'EVA花', price:35.0, unit:'个', note:'35；花蕊无；不上色，双面；厚度1mm*2'},
+  {id:64, name:'四叶草0.45m', material:'EVA花', price:30.0, unit:'个', note:'30；花蕊无；厚度1mm*2'},
+  {id:65, name:'四叶草0.35m', material:'EVA花', price:25.0, unit:'个', note:'25；花蕊无；厚度1mm*2'},
+  {id:66, name:'四叶草0.25m', material:'EVA花', price:20.0, unit:'个', note:'20；花蕊无；厚度1mm*2'},
+  {id:67, name:'茉莉1.5m', material:'EVA花', price:950.0, unit:'个', note:'950；花蕊45cm长/30根；厚度3mm'},
+  {id:68, name:'兰花0.8m', material:'EVA花', price:155.0, unit:'个', note:'155；花蕊卷筒；厚度2mm'},
+  {id:69, name:'桃枝30cm', material:'EVA花', price:30.0, unit:'个', note:'30；花蕊5+1；花蕊：EVA尖头流苏；厚度2mm'},
+  {id:70, name:'金银花30cm', material:'EVA花', price:30.0, unit:'个', note:'30；花蕊6根；厚度2mm'},
+  {id:71, name:'金银花40cm', material:'EVA花', price:35.0, unit:'个', note:'35；花蕊6根；厚度2mm'},
+  {id:72, name:'手绘六瓣花0.9m', material:'EVA花', price:230.0, unit:'个', note:'230；花蕊5片；厚度2mm'},
+  {id:73, name:'手绘六瓣花1.2m', material:'EVA花', price:300.0, unit:'个', note:'300；花蕊5片；厚度2mm'},
+  {id:74, name:'渐变八瓣花30cm', material:'EVA花', price:75.0, unit:'个', note:'75；花蕊20颗珍珠；厚度2mm'},
+  {id:75, name:'渐变八瓣花50cm', material:'EVA花', price:105.0, unit:'个', note:'105；花蕊20颗珍珠；厚度2mm'},
+  {id:76, name:'渐变八瓣花70cm', material:'EVA花', price:180.0, unit:'个', note:'180；花蕊20颗珍珠；厚度2mm'},
+  {id:77, name:'渐变八瓣花1m', material:'EVA花', price:260.0, unit:'个', note:'260；花蕊20颗珍珠；厚度2mm'},
+  {id:78, name:'发光五瓣花0.6m', material:'EVA花', price:155.0, unit:'个', note:'155；花蕊6根百合花蕊；仅花蕊发光 单独做灯花蕊售价40-50元；厚度2mm'},
+  {id:79, name:'发光五瓣花0.8m', material:'EVA花', price:198.0, unit:'个', note:'198；花蕊6根百合花蕊；厚度2mm'},
+  {id:80, name:'发光五瓣花1.2m', material:'EVA花', price:300.0, unit:'个', note:'300；花蕊6根百合花蕊；厚度3mm'},
+  {id:81, name:'荷花20cm', material:'EVA花', price:55.0, unit:'个', note:'55；花蕊圆尖角流苏；单面贴条；厚度2mm'},
+  {id:82, name:'荷花25cm', material:'EVA花', price:62.0, unit:'个', note:'62；花蕊圆尖角流苏；厚度2mm'},
+  {id:83, name:'荷花30cm', material:'EVA花', price:75.0, unit:'个', note:'75；花蕊圆尖角流苏；厚度2mm'},
+  {id:84, name:'荷花40cm', material:'EVA花', price:90.0, unit:'个', note:'90；花蕊圆尖角流苏；厚度2mm'},
+  {id:85, name:'郁金香30cm', material:'EVA花', price:80.0, unit:'个', note:'80；花蕊EVA三棱花蕊；0.25m长花瓣，费料0.26m；厚度1mm'},
+  {id:86, name:'郁金香40cm', material:'EVA花', price:100.0, unit:'个', note:'100；0.3m长花瓣，费料0.4m；厚度2mm'},
+  {id:87, name:'郁金香50cm', material:'EVA花', price:120.0, unit:'个', note:'120；0.35m长花瓣，费料0.55m；厚度2mm'},
+  {id:88, name:'手绘郁金香80cm', material:'EVA花', price:265.0, unit:'个', note:'265；花蕊6+1鬃毛；双面手绘；厚度2mm'},
+  {id:89, name:'玫瑰3m', material:'EVA花', price:3800.0, unit:'个', note:'3800；花瓣3+4+5+5+5；厚度3mm'},
+  {id:90, name:'玫瑰2.5m', material:'EVA花', price:2700.0, unit:'个', note:'2700；花瓣3+4+5+5+5；厚度3mm'},
+  {id:91, name:'玫瑰1.8m', material:'EVA花', price:1500.0, unit:'个', note:'1500；花瓣3+4+5+5+5；厚度3mm'},
+  {id:92, name:'玫瑰1.5m', material:'EVA花', price:1100.0, unit:'个', note:'1100；花瓣3+4+5+5+5；厚度3mm'},
+  {id:93, name:'玫瑰1.2m', material:'EVA花', price:720.0, unit:'个', note:'720；花瓣3+4+5+5+5；厚度3mm'},
+  {id:94, name:'玫瑰1m', material:'EVA花', price:650.0, unit:'个', note:'650；花蕊22椭圆；花瓣3+4+5+5+5；厚度3mm'},
+  {id:95, name:'玫瑰0.9m', material:'EVA花', price:570.0, unit:'个', note:'570；花蕊20椭圆；花瓣5+3+3+3+4+5+5+5；厚度2mm'},
+  {id:96, name:'玫瑰0.85m', material:'EVA花', price:513.0, unit:'个', note:'513；花蕊20椭圆；花瓣3+4+5+5+5'},
+  {id:97, name:'玫瑰0.75m', material:'EVA花', price:446.0, unit:'个', note:'446；花蕊18椭圆；花瓣3+4+5+5+5'},
+  {id:98, name:'玫瑰0.6m', material:'EVA花', price:317.0, unit:'个', note:'317；花蕊15椭圆；花瓣3+4+5+5+5'},
+  {id:99, name:'玫瑰0.5m', material:'EVA花', price:275.0, unit:'个', note:'275；花蕊12椭圆；花瓣3+4+5+5+5；厚度2mm'},
+  {id:100, name:'玫瑰0.45m', material:'EVA花', price:212.0, unit:'个', note:'212；花瓣3+4+5+5+5'},
+  {id:101, name:'玫瑰0.4m', material:'EVA花', price:190.0, unit:'个', note:'190；花瓣3+4+5+5+5'},
+  {id:102, name:'玫瑰0.35m', material:'EVA花', price:108.0, unit:'个', note:'108；花瓣3+4+5+5+5'},
+  {id:103, name:'玫瑰0.3m', material:'EVA花', price:93.0, unit:'个', note:'93；花瓣3+4+5+5+5'},
+  {id:104, name:'造型牡丹0.8m', material:'EVA花', price:480.0, unit:'个', note:'480；花蕊黄色EVA流苏；花瓣5+5+6+6；厚度2mm'},
+  {id:105, name:'造型牡丹1m', material:'EVA花', price:600.0, unit:'个', note:'600；花蕊黄色EVA流苏；花瓣5+5+6+6；厚度2mm'},
+  {id:106, name:'造型牡丹1.2m', material:'EVA花', price:820.0, unit:'个', note:'820；花蕊黄色EVA流苏；花瓣5+5+6+6；厚度3mm'},
+  {id:107, name:'少层牡丹0.3m', material:'EVA花', price:98.0, unit:'个', note:'98；花蕊流苏加花房；花瓣3+5+6，费料0.4m/朵；厚度1mm'},
+  {id:108, name:'少层牡丹0.6m', material:'EVA花', price:340.0, unit:'个', note:'340；花蕊流苏加花房；花瓣3+5+6，费料1.1m/朵；厚度2mm'},
+  {id:109, name:'牡丹1.5m', material:'EVA花', price:1280.0, unit:'个', note:'1280；花蕊流苏加花房；花瓣3+6+6+8，流苏23cm两条 花瓣：0.93、0.75、0.62、0.55 加灯条+1035；厚度3mm'},
+  {id:110, name:'牡丹1.2m', material:'EVA花', price:960.0, unit:'个', note:'960；花蕊流苏加花房；花瓣3+6+6+8，流苏20cm两条 加灯条+787；厚度3mm'},
+  {id:111, name:'牡丹1m', material:'EVA花', price:680.0, unit:'个', note:'680；花蕊流苏；花瓣3+6+6+8，流苏17cm两条 加灯条+652；厚度2mm'},
+  {id:112, name:'牡丹0.8m', material:'EVA花', price:530.0, unit:'个', note:'530；花蕊流苏；花瓣3+6+6+8，流苏13cm两条 加灯条+562；厚度2mm'},
+  {id:113, name:'牡丹0.6m', material:'EVA花', price:390.0, unit:'个', note:'390；花蕊流苏；花瓣3+6+6+8，流苏11cm一条半；厚度2mm'},
+  {id:114, name:'牡丹0.4m', material:'EVA花', price:220.0, unit:'个', note:'220；花蕊流苏；花瓣3+6+6，流苏9cm一条 加灯条+225；厚度1mm'},
+  {id:115, name:'牡丹0.2m', material:'EVA花', price:85.0, unit:'个', note:'85；花蕊流苏；花瓣3+6+6，流苏8cm一条；厚度1mm'},
+  {id:116, name:'静谧公主 花苞 底座杆子1.5m', material:'EVA花', price:950.0, unit:'个', note:'950；花蕊9+1 长约70cm；花瓣5花房5；厚度3mm'},
+  {id:117, name:'静谧公主 花苞 底座杆子60cm', material:'EVA花', price:650.0, unit:'个', note:'650；花蕊60cm球；叶子五片，外花瓣4，内花瓣3；厚度2mm'},
+  {id:118, name:'静谧公主 花苞 底座杆子2.2m', material:'EVA花', price:700.0, unit:'个', note:'700；杆子粗15cm，底盘60cm直径'},
+  {id:119, name:'一套预估价1m', material:'EVA花', price:875, unit:'个', note:'800-950；花蕊无底座；花瓣0.55*0.25*5 花房0.6*0.2*5 叶片0.5*0.15*9 花苞叶片0.4*0.17*4 花苞片0.4*0.2*3；厚度2mm'},
+  {id:120, name:'渐变九瓣花45cm', material:'EVA花', price:120.0, unit:'个', note:'120；花蕊6cmEVA流苏；丙烯马克笔勾画暗纹；厚度2mm'},
+  {id:121, name:'渐变九瓣花60cm', material:'EVA花', price:145.0, unit:'个', note:'145；花蕊9cmEVA流苏；厚度2mm'},
+  {id:122, name:'渐变九瓣花75cm', material:'EVA花', price:155.0, unit:'个', note:'155；花蕊11cmEVA流苏；厚度2mm'},
+  {id:123, name:'渐变九瓣花90cm', material:'EVA花', price:180.0, unit:'个', note:'180；花蕊13cmEVA流苏；厚度2mm'},
+  {id:124, name:'牡丹花2m*2.8m', material:'EVA花', price:4000.0, unit:'个', note:'4000；花蕊25cm长 7mm扭扭棒 800根 灯盘35cm52元；花瓣11+8+9+9 1.4m高1m直径20cm深铁架；厚度3mm'},
+  {id:125, name:'牡丹花2.5m', material:'EVA花', price:5000.0, unit:'个', note:'5000；含钢板底座；厚度3mm'},
+  {id:126, name:'七瓣灯芯花1m', material:'EVA花', price:340.0, unit:'个', note:'340；花蕊萤火虫灯；花心发光，6片小花心花瓣；厚度2mm'},
+  {id:127, name:'七瓣灯芯花1.2m', material:'EVA花', price:390.0, unit:'个', note:'390；厚度3mm'},
+  {id:128, name:'七瓣灯芯花1.3m', material:'EVA花', price:450.0, unit:'个', note:'450；厚度3mm'},
+  {id:129, name:'七瓣灯芯花1.4m', material:'EVA花', price:520.0, unit:'个', note:'520；厚度3mm'},
+  {id:130, name:'七瓣灯芯花0.8m', material:'EVA花', price:310.0, unit:'个', note:'310；花蕊灯珠色温4000k 白色热缩管不加热；灯线0.6m，3cm珍珠灯；厚度2mm'},
+  {id:131, name:'七瓣灯芯花0.95m', material:'EVA花', price:340.0, unit:'个', note:'340；灯线0.6m，3cm珍珠灯；厚度2mm'},
+  {id:132, name:'七瓣灯芯花1.1m', material:'EVA花', price:355.0, unit:'个', note:'355；灯线0.7m，3cm珍珠灯；厚度3mm'},
+  {id:133, name:'七瓣灯芯花1.8m', material:'EVA花', price:840.0, unit:'个', note:'840；灯线1m，5cm珍珠灯；厚度3mm'},
+  {id:134, name:'七瓣灯芯花2m', material:'EVA花', price:960.0, unit:'个', note:'960；灯线1.2m，5cm珍珠灯；厚度3mm'},
+  {id:135, name:'十片花无灯芯版1.3m', material:'EVA花', price:430.0, unit:'个', note:'430；花蕊装饰小白球5个；费料4m；厚度3mm'},
+  {id:136, name:'十片花无灯芯版0.85m', material:'EVA花', price:210.0, unit:'个', note:'210；费料2.1m；厚度2mm'},
+  {id:137, name:'十片花无灯芯版0.7cm', material:'EVA花', price:180.0, unit:'个', note:'180；费料1.25m；厚度2mm'},
+  {id:138, name:'十片花无灯芯版0.55m', material:'EVA花', price:120.0, unit:'个', note:'120；费料1m；厚度2mm'},
+  {id:139, name:'海洋珍珠花无灯版0.75m', material:'EVA花', price:155.0, unit:'个', note:'155；费料1.4m；厚度2mm'},
+  {id:140, name:'海洋珍珠花无灯版0.65m', material:'EVA花', price:140.0, unit:'个', note:'140；费料1.2m；厚度2mm'},
+  {id:141, name:'海洋珍珠花无灯版0.3m', material:'EVA花', price:95.0, unit:'个', note:'95；费料0.35m；厚度1mm'},
+  {id:142, name:'六瓣花0.75m', material:'EVA花', price:135.0, unit:'个', note:'135；费料0.65m；厚度2mm'},
+  {id:143, name:'六瓣花0.7m', material:'EVA花', price:130.0, unit:'个', note:'130；费料0.5m；厚度2mm'},
+  {id:144, name:'六瓣花0.6m', material:'EVA花', price:115.0, unit:'个', note:'115；费料0.4m；厚度2mm'},
+  {id:145, name:'六瓣花0.5m', material:'EVA花', price:95.0, unit:'个', note:'95；费料0.35m；厚度2mm'},
+  {id:146, name:'六瓣花0.45m', material:'EVA花', price:85.0, unit:'个', note:'85；费料0.25m；厚度2mm'},
+  {id:147, name:'四瓣花0.5m', material:'EVA花', price:60.0, unit:'个', note:'60；费料0.4m；厚度2mm'},
+  {id:148, name:'珠光五瓣花1m', material:'EVA花', price:740.0, unit:'个', note:'740；花蕊30颗珍珠 3-4颗3cm左右泡泡球；珠光颜料上色4遍， 花瓣EVA+水光绒；厚度2mm'},
+  {id:149, name:'珠光五瓣花1.2m', material:'EVA花', price:820.0, unit:'个', note:'820；厚度3mm'},
+  {id:150, name:'珠光五瓣花1.5m', material:'EVA花', price:920.0, unit:'个', note:'920；厚度3mm'},
+  {id:151, name:'蝴蝶兰1.4m', material:'EVA花', price:295.0, unit:'个', note:'295；花蕊加灯310；加球球灯价格： 30-50cm配4cm球价格+3元/个 60cm-70cm配5cm球价格+10元/个 80cm-90cm配6cm球价格+12元/个 1m-1.2m配8cm球价格+13元/个 1.3m-1.5m配10cm球价格+15元/个；厚度3mm'},
+  {id:152, name:'蝴蝶兰1.3m', material:'EVA花', price:245.0, unit:'个', note:'245；花蕊加灯260；厚度3mm'},
+  {id:153, name:'蝴蝶兰1.2m', material:'EVA花', price:213.0, unit:'个', note:'213；花蕊加灯225；厚度3mm'},
+  {id:154, name:'蝴蝶兰1m', material:'EVA花', price:158.0, unit:'个', note:'158；花蕊加灯158；厚度3mm'},
+  {id:155, name:'蝴蝶兰80cm', material:'EVA花', price:120.0, unit:'个', note:'120；花蕊加灯130；厚度2mm'},
+  {id:156, name:'蝴蝶兰50cm', material:'EVA花', price:75.0, unit:'个', note:'75；花蕊加灯80；厚度2mm'},
+  {id:157, name:'蝴蝶兰55cm', material:'EVA花', price:60.0, unit:'个', note:'60；花蕊无；厚度2mm'},
+  {id:158, name:'蝴蝶兰45cm', material:'EVA花', price:50.0, unit:'个', note:'50；厚度2mm'},
+  {id:159, name:'蝴蝶兰40cm', material:'EVA花', price:45.0, unit:'个', note:'45；厚度2mm'},
+  {id:160, name:'蝴蝶兰35cm', material:'EVA花', price:40.0, unit:'个', note:'40；厚度2mm'},
+  {id:161, name:'蝴蝶兰30cm', material:'EVA花', price:35.0, unit:'个', note:'35；厚度2mm'},
+  {id:162, name:'七瓣珠光花0.5m', material:'EVA花', price:350.0, unit:'个', note:'350；花蕊70颗；花瓣3+4，上色4--5遍，加亮光油；厚度2mm'},
+  {id:163, name:'七瓣珠光花0.9m', material:'EVA花', price:500.0, unit:'个', note:'500；厚度2mm'},
+  {id:164, name:'七瓣珠光花1m', material:'EVA花', price:550.0, unit:'个', note:'550；厚度2mm'},
+  {id:165, name:'七瓣珠光花1.3m', material:'EVA花', price:750.0, unit:'个', note:'750；花瓣3+4+6；厚度3mm'},
+  {id:166, name:'铃兰12cm', material:'EVA花', price:22.0, unit:'个', note:'22；花蕊无；花瓣6.28*18.8；厚度1mm'},
+  {id:167, name:'铃兰14cm', material:'EVA花', price:24.0, unit:'个', note:'24；花瓣7.32*22；厚度1mm'},
+  {id:168, name:'铃兰16cm', material:'EVA花', price:26.0, unit:'个', note:'26；花瓣8.37*25.1；厚度1mm'},
+  {id:169, name:'铃兰18cm', material:'EVA花', price:30.0, unit:'个', note:'30；花瓣9.42*28.26；厚度2mm'},
+  {id:170, name:'铃兰20cm', material:'EVA花', price:32.0, unit:'个', note:'32；花瓣10.5*31.4；厚度2mm'},
+  {id:171, name:'铃兰22cm', material:'EVA花', price:34.0, unit:'个', note:'34；花瓣11.5*34.5；厚度2mm'},
+  {id:172, name:'铃兰25cm', material:'EVA花', price:38.0, unit:'个', note:'38；花瓣13.1*39.2；厚度2mm'},
+  {id:173, name:'铃兰30cm', material:'EVA花', price:45.0, unit:'个', note:'45；花瓣15.7*47.1；厚度2mm'},
+  {id:174, name:'芍药0.7m', material:'EVA花', price:180.0, unit:'个', note:'180；花蕊球球+12根花蕊 0.7-0.9cm球；花瓣耗材1.2m，内层贴条32cm；厚度2mm'},
+  {id:175, name:'芍药0.95m', material:'EVA花', price:270.0, unit:'个', note:'270；花瓣耗材1.4m，内层贴条35cm；厚度2mm'},
+  {id:176, name:'芍药1.1m', material:'EVA花', price:295.0, unit:'个', note:'295；花瓣耗材2.7m，内层贴条40cm；厚度3mm'},
+  {id:177, name:'芍药1.25m', material:'EVA花', price:310.0, unit:'个', note:'310；花瓣耗材3.1m，内层贴条48cm；厚度3mm'},
+  {id:178, name:'芍药1.3m', material:'EVA花', price:328.0, unit:'个', note:'328；花瓣耗材4m，内层贴条50cm；厚度3mm'},
+  {id:179, name:'芍药1.4m', material:'EVA花', price:365.0, unit:'个', note:'365；花瓣耗材5.1m，内层贴条53cm；厚度3mm'},
+  {id:180, name:'纯色 卡纸状花0.6m', material:'EVA花', price:168.0, unit:'个', note:'168；花蕊尖流苏；厚度2mm'},
+  {id:181, name:'纯色 卡纸状花0.8m', material:'EVA花', price:195.0, unit:'个', note:'195；厚度2mm'},
+  {id:182, name:'纯色 卡纸状花1m', material:'EVA花', price:270.0, unit:'个', note:'270；厚度2mm'},
+  {id:183, name:'纯色玉兰花0.9m', material:'EVA花', price:236.0, unit:'个', note:'236；花蕊尖流苏；花瓣0.65m耗材2.3m；厚度2mm'},
+  {id:184, name:'纯色玉兰花1.4m', material:'EVA花', price:480.0, unit:'个', note:'480；花瓣0.85m耗材3.5m；厚度3mm'},
+  {id:185, name:'纯色玉兰花1.8m', material:'EVA花', price:650.0, unit:'个', note:'650；花瓣1m耗材5m；厚度3mm'},
+  {id:186, name:'纯色玉兰花2m', material:'EVA花', price:890.0, unit:'个', note:'890；花瓣1.15m耗材6m；厚度3mm'},
+  {id:187, name:'渐变玉兰花1.5m', material:'EVA花', price:520.0, unit:'个', note:'520；花蕊椭圆球贴片；厚度3mm'},
+  {id:188, name:'渐变玉兰花1.2m', material:'EVA花', price:430.0, unit:'个', note:'430；厚度3mm'},
+  {id:189, name:'渐变玉兰花1m', material:'EVA花', price:360.0, unit:'个', note:'360；厚度2mm'},
+  {id:190, name:'纯色花1.1m', material:'EVA花', price:336.0, unit:'个', note:'336；花蕊萤火虫灯5根；花瓣4片外层+5片玉兰花瓣内层；厚度3mm'},
+  {id:191, name:'变异虞美人0.4m', material:'EVA花', price:90.0, unit:'个', note:'90；厚度2mm'},
+  {id:192, name:'变异虞美人0.4m·2', material:'EVA花', price:100.0, unit:'个', note:'100；厚度2mm'},
+  {id:193, name:'变异虞美人0.4m·3', material:'EVA花', price:110.0, unit:'个', note:'110；厚度2mm'},
+  {id:194, name:'变异虞美人0.3m', material:'EVA花', price:87.0, unit:'个', note:'87；厚度1mm'},
+  {id:195, name:'变异虞美人0.4m·4', material:'EVA花', price:105.0, unit:'个', note:'105；厚度2mm'},
+  {id:196, name:'变异虞美人0.3m·2', material:'EVA花', price:90.0, unit:'个', note:'90；厚度1mm'},
+  {id:197, name:'红金渐变花2.1m', material:'EVA花', price:1500.0, unit:'个', note:'1500；花蕊无；金色红色双色花；厚度3mm'},
+  {id:198, name:'珠光五瓣花1.3m', material:'EVA花', price:800.0, unit:'个', note:'800；花蕊24根珠串；正面4遍色，背面两遍色；厚度3mm'},
+  {id:199, name:'珠光五瓣花1m·2', material:'EVA花', price:530.0, unit:'个', note:'530；花蕊24根珠串；厚度2mm'},
+  {id:200, name:'珠光五瓣花0.95m', material:'EVA花', price:470.0, unit:'个', note:'470；花蕊24根珠串；厚度2mm'},
+  {id:201, name:'珠光五瓣花0.8m', material:'EVA花', price:400.0, unit:'个', note:'400；花蕊24根珠串；厚度2mm'},
+  {id:202, name:'珠光五瓣花0.75m', material:'EVA花', price:360.0, unit:'个', note:'360；花蕊24根珠串；厚度2mm'},
+  {id:203, name:'珠光五瓣花0.55m', material:'EVA花', price:280.0, unit:'个', note:'280；花蕊24根珠串；厚度2mm'},
+  {id:204, name:'小叶片花0.5m', material:'EVA花', price:120.0, unit:'个', note:'120；花蕊简易花蕊；厚度2mm'},
+  {id:205, name:'小叶片花0.55m', material:'EVA花', price:130.0, unit:'个', note:'130；厚度2mm'},
+  {id:206, name:'小叶片花0.6m', material:'EVA花', price:150.0, unit:'个', note:'150；厚度2mm'},
+  {id:207, name:'小叶片花0.65m', material:'EVA花', price:160.0, unit:'个', note:'160；厚度2mm'},
+  {id:208, name:'小叶片花0.75m', material:'EVA花', price:180.0, unit:'个', note:'180；厚度2mm'},
+  {id:209, name:'小叶片花0.85m', material:'EVA花', price:200.0, unit:'个', note:'200；厚度2mm'},
+  {id:210, name:'向日葵0.6m', material:'皱纹纸花', price:245.0, unit:'个', note:'245；花蕊9.5cm高流苏12条，单售价56元'},
+  {id:211, name:'向日葵0.8m', material:'皱纹纸花', price:285.0, unit:'个', note:'285'},
+  {id:212, name:'玫瑰0.95m', material:'皱纹纸花', price:268.0, unit:'个', note:'268；花瓣3+3+4+5+6+7'},
+  {id:213, name:'虞美人0.6m', material:'皱纹纸花', price:95.0, unit:'个', note:'95；花蕊珍珠20颗'},
+  {id:214, name:'百合莲2m', material:'皱纹纸花', price:355.0, unit:'个', note:'355；单朵花大小35cm，花蕊20根'},
+  {id:215, name:'小金花13cm', material:'皱纹纸花', price:28.0, unit:'个', note:'28'},
+  {id:216, name:'鸢尾2m', material:'和纸花', price:1200.0, unit:'个', note:'1200；花蕊细铁丝点状鬃毛；进口和纸24张，14#铁丝81根'},
+  {id:217, name:'鸢尾0.8m', material:'和纸花', price:235.0, unit:'个', note:'235；花蕊无'},
+  {id:218, name:'鸢尾0.6m', material:'和纸花', price:190.0, unit:'个', note:'190；花蕊无'},
+  {id:219, name:'鸢尾0.3m', material:'和纸花', price:105.0, unit:'个', note:'105；花蕊无'},
+  {id:220, name:'鸢尾0.4m', material:'和纸花', price:130.0, unit:'个', note:'130；花瓣长度30cm'},
+  {id:221, name:'鸢尾0.5m', material:'和纸花', price:165.0, unit:'个', note:'165'},
+  {id:222, name:'鸢尾1m', material:'和纸花', price:580.0, unit:'个', note:'580；花蕊无；外层花瓣0.8*0.6 内层0.75*0.5'},
+  {id:223, name:'鸢尾花0.5m', material:'和纸花', price:135.0, unit:'个', note:'135；花蕊12根珍珠；花瓣长度42cm，耗纸3m'},
+  {id:224, name:'鸢尾花0.6m', material:'和纸花', price:145.0, unit:'个', note:'145；花瓣长度53cm，耗纸4.5m'},
+  {id:225, name:'鸢尾花0.7m', material:'和纸花', price:165.0, unit:'个', note:'165；花瓣长度63cm，耗纸6.5m'},
+  {id:226, name:'小雏菊1.2m', material:'和纸花', price:400.0, unit:'个', note:'400'},
+  {id:227, name:'小雏菊0.8m', material:'和纸花', price:265.0, unit:'个', note:'265'},
+  {id:228, name:'进口纸小花0.7m', material:'和纸花', price:203.0, unit:'个', note:'203；花蕊牛奶棉 小圆片20张；花瓣5+5'},
+  {id:229, name:'进口纸小花0.6m', material:'和纸花', price:189.0, unit:'个', note:'189'},
+  {id:230, name:'进口纸小花0.5m', material:'和纸花', price:155.0, unit:'个', note:'155'},
+  {id:231, name:'进口纸小花0.4m', material:'和纸花', price:105.0, unit:'个', note:'105'},
+  {id:232, name:'进口纸小花0.3m', material:'和纸花', price:80.0, unit:'个', note:'80'},
+  {id:233, name:'进口纸鸡蛋花1m', material:'和纸花', price:235.0, unit:'个', note:'235；花蕊无；圈边'},
+  {id:234, name:'进口纸鸡蛋花80cm', material:'和纸花', price:165.0, unit:'个', note:'165'},
+  {id:235, name:'进口纸鸡蛋花60cm', material:'和纸花', price:145.0, unit:'个', note:'145'},
+  {id:236, name:'扶桑花0.8m', material:'和纸花', price:265.0, unit:'个', note:'265；花蕊100颗珍珠'},
+  {id:237, name:'扶桑花0.7m', material:'和纸花', price:243.0, unit:'个', note:'243'},
+  {id:238, name:'扶桑花0.6m', material:'和纸花', price:208.0, unit:'个', note:'208'},
+  {id:239, name:'扶桑花0.5m', material:'和纸花', price:175.0, unit:'个', note:'175'},
+  {id:240, name:'扶桑花0.4m', material:'和纸花', price:165.0, unit:'个', note:'165'},
+  {id:241, name:'和纸八瓣花30cm', material:'和纸花', price:68.0, unit:'个', note:'68；花蕊3cm泡泡蛋'},
+  {id:242, name:'五瓣花花束45cm花4个', material:'和纸花', price:260.0, unit:'个', note:'260；花蕊7根3mm 纸包铁丝；杆子1.5m，叶子60cm两张，底座另算 花头53一个'},
+  {id:243, name:'栀子花0.35m', material:'和纸花', price:95.0, unit:'个', note:'95；花蕊最小号花瓣1片；1+5+6+7'},
+  {id:244, name:'栀子花0.5m', material:'和纸花', price:180.0, unit:'个', note:'180'},
+  {id:245, name:'栀子花0.65m', material:'和纸花', price:240.0, unit:'个', note:'240'},
+  {id:246, name:'栀子花0.8m', material:'和纸花', price:320.0, unit:'个', note:'320'},
+  {id:247, name:'16片纸花1.2m', material:'和纸花', price:276.0, unit:'个', note:'276；文件：西安飞飞香槟色纸花'},
+  {id:248, name:'16片纸花1.4m', material:'和纸花', price:315.0, unit:'个', note:'315'},
+  {id:249, name:'16片纸花1.5m', material:'和纸花', price:376.0, unit:'个', note:'376'},
+  {id:250, name:'8-18cm无铁丝皱纹纸铃兰', material:'铃兰', price:8.0, unit:'个', note:'8元/个'},
+  {id:251, name:'灯线', material:'铃兰', price:4.0, unit:'m', note:'4元/m'},
+  {id:252, name:'灯', material:'铃兰', price:8.0, unit:'个', note:'8元/个'},
+  {id:253, name:'2m以下杆', material:'铃兰', price:10.0, unit:'m', note:'10元/m'},
+  {id:254, name:'20-25cm皱纹纸吊顶铃兰花', material:'铃兰', price:20.0, unit:'个', note:'20元/个'},
+  {id:255, name:'铃兰12cm·2', material:'铃兰', price:22.0, unit:'个', note:'22；花瓣6.28*18.8'},
+  {id:256, name:'贝母花2m', material:'其他材质', price:850.0, unit:'个', note:'850；花蕊鬃毛；叶子25-45cm长，花朵25cm三根铁丝'},
+  {id:257, name:'水仙花0.8m', material:'其他材质', price:195.0, unit:'个', note:'195；花蕊3EVA+1鬃毛'},
+  {id:258, name:'水仙花0.9m', material:'其他材质', price:215.0, unit:'个', note:'215'},
+  {id:259, name:'风铃草0.35m', material:'其他材质', price:70.0, unit:'个', note:'70；花蕊1EVA'},
+  {id:260, name:'郁金香0.45cm', material:'其他材质', price:105.0, unit:'个', note:'105；花苞尺寸，展开尺寸65cm'},
+  {id:261, name:'百合0.8m', material:'其他材质', price:110.0, unit:'个', note:'110'},
+  {id:262, name:'百合1m', material:'其他材质', price:150.0, unit:'个', note:'150'},
+  {id:263, name:'水母0.5m', material:'其他材质', price:900.0, unit:'个', note:'900'},
+  {id:264, name:'水母0.8m', material:'其他材质', price:1480.0, unit:'个', note:'1480'},
+  {id:265, name:'四环蝴蝶结3.2*1.1m', material:'其他材质', price:900.0, unit:'个', note:'900；中间蝴蝶结整体1.4m*1.1m，价格660元'},
+  {id:266, name:'单蝴蝶结1.8m*1m', material:'其他材质', price:260.0, unit:'个', note:'260'},
+  {id:267, name:'单蝴蝶结1.4*0.8m', material:'其他材质', price:220.0, unit:'个', note:'220；拖尾2.2m'},
+  {id:268, name:'单蝴蝶结1m*0.6m', material:'其他材质', price:200.0, unit:'个', note:'200'},
+  {id:269, name:'花蝴蝶结1.8*1.2m', material:'其他材质', price:1040.0, unit:'个', note:'1040；拖尾2m'},
+  {id:270, name:'花蝴蝶结3m*1.6m', material:'其他材质', price:2100.0, unit:'个', note:'2100；拖尾2.5m'},
+  {id:271, name:'花蝴蝶结2.8m*1.5m', material:'其他材质', price:1800.0, unit:'个', note:'1800'},
+  {id:272, name:'刺绣蝴蝶结2.5m*4.3m', material:'其他材质', price:1200.0, unit:'个', note:'1200（不要刺绣） 1600（有刺绣）；身5.4*1.5一条 尾7.3*0.9一条'},
+  {id:273, name:'丝带蝴蝶结1m', material:'其他材质', price:140.0, unit:'个', note:'140；飘带60cm*25cm，“丝带”宽25cm 上色两遍'},
+  {id:274, name:'大耳蝴蝶结1m', material:'其他材质', price:160.0, unit:'个', note:'160；“大耳宽度60cm”，飘带75*25'},
+  {id:275, name:'腈纶绒 六瓣花0.8m', material:'其他材质', price:320.0, unit:'个', note:'320；花蕊20根圆球鬃毛'},
+  {id:276, name:'腈纶绒 六瓣花1m', material:'其他材质', price:400.0, unit:'个', note:'400'},
+  {id:277, name:'五瓣 珍珠绒花1m', material:'其他材质', price:205.0, unit:'个', note:'205；花蕊珍珠加 泡泡球涂色'},
+  {id:278, name:'五瓣 珍珠绒花1.2m', material:'其他材质', price:230.0, unit:'个', note:'230'},
+  {id:279, name:'圈边珍珠 绒花0.5m', material:'其他材质', price:145.0, unit:'个', note:'145；花蕊珍珠加 泡泡球涂色'},
+  {id:280, name:'圈边珍珠 绒花0.6m', material:'其他材质', price:156.0, unit:'个', note:'156'},
+  {id:281, name:'圈边珍珠 绒花0.7m', material:'其他材质', price:180.0, unit:'个', note:'180'},
+  {id:282, name:'圈边珍珠 绒花0.8m', material:'其他材质', price:208.0, unit:'个', note:'208'},
+  {id:283, name:'藕丝花5-15cm', material:'其他材质', price:40.0, unit:'个', note:'40；花蕊珍珠芦苇串8；无花边，叶片中间加一串珍珠'},
+  {id:284, name:'藕丝花1.5m', material:'其他材质', price:500.0, unit:'个', note:'500；花蕊珍珠圈串；0.9*0.41，边2m，6mm珍珠50颗一圈，厚藕丝600一个'},
+  {id:285, name:'藕丝花1.2m', material:'其他材质', price:380, unit:'个', note:'360-400；0.72*0.33，边1.6m，4mm珍珠65颗一圈'},
+  {id:286, name:'藕丝花1.1m', material:'其他材质', price:320, unit:'个', note:'300-340；0.62*0.29，边1.4m，4mm珍珠60颗一圈'},
+  {id:287, name:'藕丝花1m', material:'其他材质', price:285, unit:'个', note:'270-300；0.58*0.27，边1.3m，4mm珍珠55颗一圈'},
+  {id:288, name:'藕丝花0.9m', material:'其他材质', price:265, unit:'个', note:'250-280；0.5*0.25，边1.2m，4mm珍珠50颗一圈'},
+  {id:289, name:'藕丝花0.8m', material:'其他材质', price:245, unit:'个', note:'230-260；0.46*0.22，边1.1m，4mm珍珠45颗一圈'},
+  {id:290, name:'藕丝花0.7m', material:'其他材质', price:225, unit:'个', note:'210-240；0.41*0.2，边1m，4mm珍珠40颗一圈'},
+  {id:291, name:'藕丝花0.6m', material:'其他材质', price:200, unit:'个', note:'190-210；0.36*0.17，边0.85m，4mm珍珠41颗一圈'},
+  {id:292, name:'藕丝花 无花边1m', material:'其他材质', price:252.0, unit:'个', note:'252；花蕊珍珠串~40颗'},
+  {id:293, name:'藕丝花 无花边0.8m', material:'其他材质', price:220.0, unit:'个', note:'220'},
+  {id:294, name:'藕丝花 无花边0.6m', material:'其他材质', price:178.0, unit:'个', note:'178'},
+  {id:295, name:'藕丝加绒0.8m', material:'其他材质', price:230.0, unit:'个', note:'230；花蕊珍珠20颗， 球形灯一个；球形灯6cm，不要灯少10元'},
+  {id:296, name:'藕丝加绒0.6m', material:'其他材质', price:169.0, unit:'个', note:'169；球形灯5cm，不要灯少10元'},
+  {id:297, name:'藕丝加绒0.4m', material:'其他材质', price:106.0, unit:'个', note:'106；球形灯4cm，不要灯少10元'},
+  {id:298, name:'藕丝球0.4m', material:'其他材质', price:48.0, unit:'个', note:'48；布料2.6m，缝纫20元，球8.5'},
+  {id:299, name:'渐变真丝花0.6m', material:'其他材质', price:198.0, unit:'个', note:'198；花蕊1+6；花瓣4+5+5，费料1m'},
+  {id:300, name:'渐变真丝花0.5m', material:'其他材质', price:162.0, unit:'个', note:'162；花瓣4+5+5，费料0.85m'},
+  {id:301, name:'渐变真丝花0.4m', material:'其他材质', price:130.0, unit:'个', note:'130；花瓣4+5+5，费料0.75m'},
+  {id:302, name:'真丝小雏菊0.3m', material:'其他材质', price:80.0, unit:'个', note:'80；花蕊6cm高流苏3+1；花瓣16cm，花蕊8cm'},
+  {id:303, name:'真丝小雏菊0.4m', material:'其他材质', price:98.0, unit:'个', note:'98；花蕊7cm高流苏3+1；花瓣18cm，花蕊10cm'},
+  {id:304, name:'真丝含灯多层花0.8m', material:'其他材质', price:285.0, unit:'个', note:'285；花蕊花蕊13cm2条；花瓣3+4+5+5，无灯少20元'},
+  {id:305, name:'真丝含灯多层花1m', material:'其他材质', price:350.0, unit:'个', note:'350；花蕊花蕊15cm2条；花瓣3+4+5+5，无灯少12元'},
+  {id:306, name:'荷花0.8m', material:'其他材质', price:295.0, unit:'个', note:'295；花蕊莲蓬13cm；花茎高15cm，细窄2条'},
+  {id:307, name:'荷花0.7m', material:'其他材质', price:255.0, unit:'个', note:'255；花蕊莲蓬11cm；花茎高13cm，细窄2条'},
+  {id:308, name:'荷花0.6m', material:'其他材质', price:225.0, unit:'个', note:'225；花蕊莲蓬9cm；花茎高11cm，细窄2条'},
+  {id:309, name:'荷花0.5m', material:'其他材质', price:190.0, unit:'个', note:'190；花蕊莲蓬8cm；花茎高9cm，细窄2条'},
+  {id:310, name:'花苞0.25m', material:'其他材质', price:115.0, unit:'个', note:'115；最高33cm，大大小小9片'},
+  {id:311, name:'荷叶0.7m', material:'其他材质', price:215.0, unit:'个', note:'215'},
+  {id:312, name:'荷叶0.6m', material:'其他材质', price:188.0, unit:'个', note:'188'},
+  {id:313, name:'荷叶0.5m', material:'其他材质', price:155.0, unit:'个', note:'155'},
+  {id:314, name:'荷叶0.4m', material:'其他材质', price:123.0, unit:'个', note:'123'},
+  {id:315, name:'绒蝴蝶1.5m', material:'蝴蝶', price:500.0, unit:'个', note:'500；珍珠4cm+3cm*2+2.5cm*2+2cm'},
+  {id:316, name:'绒蝴蝶0.8m', material:'蝴蝶', price:115.0, unit:'个', note:'115'},
+  {id:317, name:'绒蝴蝶0.6m', material:'蝴蝶', price:90.0, unit:'个', note:'90'},
+  {id:318, name:'绒蝴蝶0.5m', material:'蝴蝶', price:70.0, unit:'个', note:'70'},
+  {id:319, name:'绒蝴蝶0.4m', material:'蝴蝶', price:50.0, unit:'个', note:'50'},
+  {id:320, name:'绒蝴蝶0.3m', material:'蝴蝶', price:45.0, unit:'个', note:'45'},
+  {id:321, name:'绒蝴蝶5m*3m', material:'蝴蝶', price:6000.0, unit:'个', note:'6000'},
+  {id:322, name:'和纸蝴蝶65cm', material:'蝴蝶', price:98.0, unit:'个', note:'98'},
+  {id:323, name:'和纸蝴蝶55cm', material:'蝴蝶', price:92.0, unit:'个', note:'92'},
+  {id:324, name:'和纸蝴蝶45cm', material:'蝴蝶', price:87.0, unit:'个', note:'87'},
+  {id:325, name:'和纸蝴蝶35cm', material:'蝴蝶', price:80.0, unit:'个', note:'80'},
+  {id:326, name:'和纸蝴蝶25cm', material:'蝴蝶', price:75.0, unit:'个', note:'75'},
+  {id:327, name:'进口和纸 加金粉70cm', material:'蝴蝶', price:165.0, unit:'个', note:'165；注意不要有浮粉'},
+  {id:328, name:'进口和纸 加金粉50cm', material:'蝴蝶', price:135.0, unit:'个', note:'135'},
+  {id:329, name:'进口和纸 加金粉40cm', material:'蝴蝶', price:120.0, unit:'个', note:'120'},
+  {id:330, name:'铁艺亮片 绒蝴蝶2.4m', material:'蝴蝶', price:2600.0, unit:'个', note:'2600；铁艺价格475'},
+  {id:331, name:'EVA手绘 蝴蝶1.2m', material:'蝴蝶', price:355.0, unit:'个', note:'355'},
+  {id:332, name:'EVA手绘 蝴蝶1m', material:'蝴蝶', price:252.0, unit:'个', note:'252'},
+  {id:333, name:'EVA手绘 蝴蝶0.9m', material:'蝴蝶', price:220.0, unit:'个', note:'220'},
+  {id:334, name:'EVA手绘 蝴蝶0.8m', material:'蝴蝶', price:200.0, unit:'个', note:'200'},
+  {id:335, name:'EVA手绘 蝴蝶0.6m', material:'蝴蝶', price:178.0, unit:'个', note:'178'},
+  {id:336, name:'EVA手绘 蝴蝶0.5m', material:'蝴蝶', price:140.0, unit:'个', note:'140'},
+  {id:337, name:'EVA手绘 蝴蝶0.4m', material:'蝴蝶', price:125.0, unit:'个', note:'125'},
+  {id:338, name:'EVA手绘 蝴蝶0.3m', material:'蝴蝶', price:109.0, unit:'个', note:'109'},
+  {id:339, name:'喷色百合缀蝴蝶2m*2m', material:'蝴蝶', price:1600.0, unit:'个', note:'1600；铁艺预估800，身体泡泡胶+卷卷纱布'},
+  {id:340, name:'EVA双面蝴蝶2.5m*2m', material:'蝴蝶', price:2200.0, unit:'个', note:'2200；铁艺950，背面相同'},
+  {id:341, name:'EVA双面蝴蝶2m*1.6m', material:'蝴蝶', price:950.0, unit:'个', note:'950；铁艺750，双面相同，单边翅膀'},
+];
+
+const LIB_VERSION = 'lib_20261005';
+
+function defaultStore(){
+  return {
+    libVersion: LIB_VERSION,
+    library: SEED_LIB.map(i => ({...i})),
+    sideImgs: { budget: [[],[]] },
+    quotes: [],
+    budget: null,
+    budgetTemplate: null,
+    order: null,
+    cust: {phone:'', freight:0, iron:0, install:0, discount:0}
+  };
+}
+
+function load(){
+  try {
+    const s = JSON.parse(localStorage.getItem(K));
+    if (s){
+      if (s.libVersion !== LIB_VERSION){
+        s.library = SEED_LIB.map(i => ({...i}));
+        s.libVersion = LIB_VERSION;
+      }
+      const imgStore = getImgStore();
+      restoreImages(s, imgStore);
+      const merged = Object.assign(defaultStore(), s);
+      if (!merged.sideImgs) merged.sideImgs = { budget: [[],[]] };
+      if (!Array.isArray(merged.sideImgs.budget)) merged.sideImgs.budget = [[],[]];
+      return merged;
+    }
+  } catch(e){ console.warn('本地加载失败', e); }
+  return defaultStore();
+}
+
+function save(){
+  try {
+    ensureIds(store);
+    const imgStore = getImgStore();
+    const clean = extractImages(store, imgStore);
+    setImgStore(imgStore);
+    localStorage.setItem(K, JSON.stringify(clean));
+    schedulePush(clean);
+  } catch(e){
+    console.warn('保存失败', e);
+  }
+}
+
+let store = load();
+let view = 'quote';
+let subQuote = 'quote-lib';
+let subOrder = 'order-price';
+let budgetMode = 'manual';
+let orderVer = 1;
+let orderMake = false;
+let activeRecId = null;
+
+/* ===================== 图片放大灯箱 ===================== */
+function showLightbox(src){
+  const lb = $('lightbox'), im = $('lightboxImg');
+  if (!lb || !im) return;
+  im.src = src;
+  lb.classList.add('show');
+}
+function hideLightbox(){
+  const lb = $('lightbox'), im = $('lightboxImg');
+  if (!lb) return;
+  lb.classList.remove('show');
+  if (im) im.src = '';
+}
+document.addEventListener('dblclick', e => {
+  const t = e.target;
+  if (t && t.tagName === 'IMG' && t.closest && t.closest('.img-thumb')){
+    e.preventDefault();
+    showLightbox(t.src);
+  }
+});
+(function bindLightbox(){
+  const lb = $('lightbox');
+  if (!lb) return;
+  lb.addEventListener('click', hideLightbox);
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') hideLightbox();
+  });
+})();
+
+/* ===================== 通用图片拖放 ===================== */
+function dropTargetFromKey(key){
+  const p = String(key || '').split('|');
+  if (p[0] === 'rec' && p.length >= 5){
+    const rec = store.quotes.find(q => q.id === p[1]);
+    if (!rec) return null;
+    const blk = (rec.blocks || []).find(b => b.id === p[2]);
+    if (!blk) return null;
+    const it = (blk.items || [])[+p[3]];
+    if (!it) return null;
+    return p[4] === 'desc' ? (it.descImgs = it.descImgs || []) : (it.remarkImgs = it.remarkImgs || []);
+  }
+  if (p[0] === 'side'){
+    const rec = store.quotes.find(q => q.id === p[1]);
+    if (!rec) return null;
+    if (!Array.isArray(rec.imgs)) rec.imgs = [];
+    return rec.imgs;
+  }
+  if (p[0] === 'orow'){
+    const o = getO();
+    const r = (o.rows || [])[+p[1]];
+    if (!r) return null;
+    if (!Array.isArray(r.img)) r.img = [];
+    return r.img;
+  }
+  if (p[0] === 'ov2'){
+    const o = getO();
+    const r = (o.v2 || [])[+p[1]];
+    if (!r) return null;
+    if (!Array.isArray(r.img)) r.img = [];
+    return r.img;
+  }
+  return null;
+}
+
+function refreshAfterImgChange(){
+  if (view === 'quote'){
+    if (subQuote === 'quote-rec') renderRecs();
+  } else if (view === 'order'){
+    renderOrder();
+  }
+  renderSidebar();
+}
+
+let dragOverEl = null;
+document.addEventListener('dragenter', e => {
+  const dz = e.target && e.target.closest ? e.target.closest('[data-dropzone]') : null;
+  if (!dz) return;
+  e.preventDefault();
+  if (dragOverEl && dragOverEl !== dz) dragOverEl.classList.remove('drag-over');
+  dragOverEl = dz;
+  dz.classList.add('drag-over');
+});
+document.addEventListener('dragover', e => {
+  const dz = e.target && e.target.closest ? e.target.closest('[data-dropzone]') : null;
+  if (!dz) return;
+  e.preventDefault();
+  if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+  if (dragOverEl && dragOverEl !== dz) dragOverEl.classList.remove('drag-over');
+  dragOverEl = dz;
+  dz.classList.add('drag-over');
+});
+document.addEventListener('dragleave', e => {
+  const dz = e.target && e.target.closest ? e.target.closest('[data-dropzone]') : null;
+  if (!dz) return;
+  if (e.relatedTarget && dz.contains(e.relatedTarget)) return;
+  dz.classList.remove('drag-over');
+  if (dragOverEl === dz) dragOverEl = null;
+});
+document.addEventListener('drop', e => {
+  const dz = e.target && e.target.closest ? e.target.closest('[data-dropzone]') : null;
+  if (!dz) return;
+  e.preventDefault();
+  dz.classList.remove('drag-over');
+  dragOverEl = null;
+
+  const arr = dropTargetFromKey(dz.dataset.dropzone);
+  if (!arr) return;
+  const files = Array.from((e.dataTransfer && e.dataTransfer.files) || []).filter(f => f.type.startsWith('image/'));
+  if (!files.length) return;
+  const max = parseInt(dz.dataset.max || '6', 10) || 6;
+
+  (async () => {
+    let added = 0;
+    for (const f of files){
+      if (arr.length >= max){ alert('最多上传 ' + max + ' 张图片'); break; }
+      await new Promise(resolve => {
+        const r = new FileReader();
+        r.onload = ev => compressImg(ev.target.result, 800, url => { arr.push(url); added++; resolve(); });
+        r.onerror = () => resolve();
+        r.readAsDataURL(f);
+      });
+    }
+    if (added){
+      save();
+      refreshAfterImgChange();
+    }
+  })();
+});
+
+/* ===================== 图片工具 ===================== */
+function compressImg(dataUrl, maxLen, cb){
+  const img = new Image();
+  img.onload = () => {
+    let w = img.width, h = img.height;
+    if (!w || !h){ cb(dataUrl); return; }
+    const scale = Math.min(1, maxLen / Math.max(w, h));
+    w = Math.round(w * scale); h = Math.round(h * scale);
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    c.getContext('2d').drawImage(img, 0, 0, w, h);
+    cb(c.toDataURL('image/jpeg', 0.7));
+  };
+  img.onerror = () => cb(dataUrl);
+  img.src = dataUrl;
+}
+function pickImgs(target, maxN, after){
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'image/*'; inp.multiple = true;
+  inp.onchange = () => {
+    const files = [...inp.files];
+    let pending = files.length;
+    if (!pending) return;
+    files.forEach(f => {
+      const r = new FileReader();
+      r.onload = e => {
+        if (target.length >= maxN){ pending--; if (pending===0) after && after(); return; }
+        compressImg(e.target.result, 800, url => {
+          target.push(url);
+          pending--;
+          if (pending === 0) after && after();
+        });
+      };
+      r.readAsDataURL(f);
+    });
+  };
+  inp.click();
+}
+function thumbsHtml(arr, prefix){
+  arr = arr || [];
+  return arr.map((u, i) =>
+    '<span class="img-thumb"><img src="' + u + '" alt="图" title="双击放大">' +
+    '<button class="x" type="button" data-i="' + i + '"' + (prefix ? ' data-px="' + prefix + '"' : '') + '>×</button></span>'
+  ).join('');
+}
+
+/* ===================== 侧栏（报价记录图片） ===================== */
+function renderSidebar(){
+  const sb = $('sidebar');
+  const showSide = (view === 'quote' && subQuote === 'quote-rec');
+  if (!showSide){
+    sb.style.display = 'none';
+    sb.innerHTML = '';
+    return;
+  }
+  sb.style.display = 'flex';
+
+  const rec = activeRecId ? store.quotes.find(r => r.id === activeRecId) : null;
+  if (!rec){
+    sb.innerHTML =
+      '<div style="flex:1;display:flex;align-items:center;justify-content:center;text-align:center;' +
+      'font-size:12.5px;color:var(--faint);padding:16px;line-height:1.85;border:1.5px dashed var(--blue-tint);' +
+      'border-radius:14px;background:var(--blue-soft);">' +
+      '📷<br>点击任一报价记录<br>可在此处添加参考图片</div>';
+    return;
+  }
+  if (!Array.isArray(rec.imgs)) rec.imgs = [];
+
+  const bodyHtml = rec.imgs.length
+    ? '<div class="side-imgs">' + thumbsHtml(rec.imgs, 'side|' + rec.id) + '</div>'
+    : '<div style="flex:1;display:flex;align-items:center;justify-content:center;text-align:center;font-size:11.5px;color:var(--faint);padding:10px;">暂无图片<br>点击下方按钮或拖拽图片到此</div>';
+
+  sb.innerHTML =
+    '<div class="side-card imgs drop-zone" id="recImgDrop" data-dropzone="side|' + rec.id + '" data-max="30" style="flex:1;min-height:0;">' +
+      bodyHtml +
+      '<button class="img-add" type="button" id="recImgAdd">＋ 添加图片</button>' +
+      '<div class="drop-hint">可拖拽图片到此处<br>双击图片可放大</div>' +
+    '</div>';
+
+  const addBtn = $('recImgAdd');
+  if (addBtn) addBtn.onclick = () => pickImgs(rec.imgs, 30, () => { save(); renderSidebar(); });
+
+  sb.querySelectorAll('.img-thumb .x').forEach(x => x.onclick = () => {
+    if (!confirm('确定删除这张图片？')) return;
+    const p = (x.dataset.px || '').split('|');
+    if (p[0] === 'side'){
+      const r = store.quotes.find(q => q.id === p[1]);
+      if (r && Array.isArray(r.imgs)){ r.imgs.splice(+x.dataset.i, 1); save(); renderSidebar(); }
+    }
+  });
+}
+
+function switchView(v){
+  view = v;
+  document.querySelectorAll('.top-tab').forEach(b => b.classList.toggle('active', b.dataset.view === v));
+  ['view-quote','view-budget','view-order'].forEach(id => $(id).style.display = (id === 'view-' + v) ? '' : 'none');
+  renderSidebar();
+  if (v === 'quote') renderQuote();
+  if (v === 'budget') renderBudget();
+  if (v === 'order') renderOrder();
+}
+document.querySelectorAll('.top-tab').forEach(b => b.onclick = () => switchView(b.dataset.view));
+
+function switchSubQuote(s){
+  subQuote = s;
+  document.querySelectorAll('#view-quote .sub-tab').forEach(b => b.classList.toggle('active', b.dataset.sub === s));
+  $('quote-lib').style.display = s === 'quote-lib' ? '' : 'none';
+  $('quote-rec').style.display = s === 'quote-rec' ? '' : 'none';
+  if (s === 'quote-rec') renderRecs();
+  renderSidebar();
+}
+document.querySelectorAll('#view-quote .sub-tab').forEach(b => b.onclick = () => switchSubQuote(b.dataset.sub));
+
+function switchSubOrder(s){
+  subOrder = s;
+  orderMake = s === 'order-make';
+  document.querySelectorAll('#view-order .sub-tab').forEach(b => b.classList.toggle('active', b.dataset.sub === s));
+  renderOrder();
+}
+
+function renderLibrary(){
+  const kw = ($('libSearch').value || '').trim().toLowerCase();
+  const rows = store.library.filter(i =>
+    !kw || i.name.toLowerCase().includes(kw) || (i.material || '').toLowerCase().includes(kw) || (i.note || '').toLowerCase().includes(kw)
+  );
+  const tb = $('libTbody');
+  if (!rows.length){ tb.innerHTML = '<tr><td colspan="6"><div class="empty">没有匹配的报价项，点击右上角“新增报价项”维护价格库</div></td></tr>'; return; }
+  tb.innerHTML = rows.map(i => `
+    <tr>
+      <td class="strong">${esc(i.name)}</td>
+      <td>${esc(i.material || '')}</td>
+      <td class="num"><span class="money">${fmt(i.price)}</span></td>
+      <td class="center">${esc(i.unit || '')}</td>
+      <td style="color:var(--muted);font-size:12.5px">${esc(i.note || '')}</td>
+      <td class="center">
+        <button class="btn sm" data-act="edit" data-id="${i.id}">编辑</button>
+        <button class="btn sm red" data-act="del" data-id="${i.id}">删除</button>
+      </td>
+    </tr>`).join('');
+  tb.querySelectorAll('button[data-act=edit]').forEach(b => b.onclick = () => editLibItem(+b.dataset.id));
+  tb.querySelectorAll('button[data-act=del]').forEach(b => b.onclick = () => delLibItem(+b.dataset.id));
+  syncDatalist();
+}
+function syncDatalist(){
+  $('libList').innerHTML = store.library.map(i => `<option value="${esc(i.name)}" data-price="${i.price}" data-mat="${esc(i.material || '')}" data-unit="${esc(i.unit || '')}"></option>`).join('');
+  $('libMatList').innerHTML = store.library.map(i => `<option value="${esc(i.material || '')}" data-price="${i.price}" data-name="${esc(i.name)}"></option>`).join('');
+}
+function editLibItem(id){
+  const it = store.library.find(i => i.id === id); if (!it) return;
+  const name = prompt('样式名称：', it.name);
+  if (name === null) return;
+  const material = prompt('材质工艺：', it.material || '') || '';
+  const price = num(prompt('报价（元）：', it.price));
+  const unit = prompt('单位：', it.unit || '个') || '个';
+  const note = prompt('备注：', it.note || '') || '';
+  it.name = name.trim(); it.material = material; it.price = price; it.unit = unit; it.note = note;
+  save(); renderLibrary();
+}
+function delLibItem(id){
+  const it = store.library.find(i => i.id === id);
+  if (!confirm('确定从报价库删除「' + ((it && it.name) || '') + '」？')) return;
+  store.library = store.library.filter(i => i.id !== id);
+  save(); renderLibrary();
+}
+$('libSearch').oninput = renderLibrary;
+$('btnAddLibItem').onclick = () => {
+  const name = prompt('样式名称：'); if (!name) return;
+  const material = prompt('材质工艺：') || '';
+  const price = num(prompt('报价（元）：'));
+  const unit = prompt('单位：') || '个';
+  const note = prompt('备注：') || '';
+  store.library.push({id: Date.now(), name: name.trim(), material, price, unit, note});
+  save(); renderLibrary();
+};
+
+/* ===================== 报价记录 ===================== */
+function quoteBlockPrice(block){ return block.items.reduce((s, it) => s + num(it.price), 0); }
+function quoteRecPrice(rec){ return rec.blocks.reduce((s, b) => s + quoteBlockPrice(b), 0); }
+
+function renderRecs(){
+  const box = $('recList');
+  if (!store.quotes.length){
+    box.innerHTML = '<div class="panel"><div class="empty">暂无报价记录，点击右上角“新增报价记录”开始</div></div>';
+    return;
+  }
+  box.innerHTML = store.quotes.map(rec => {
+    if (!Array.isArray(rec.imgs)) rec.imgs = [];
+    const imgCount = rec.imgs.length;
+    const blocks = rec.blocks.map((b, bi) => {
+      const bp = quoteBlockPrice(b);
+      const items = b.items.map((it, ii) => `
+        <tr>
+          <td><input class="cell-input" data-r="${rec.id}" data-b="${b.id}" data-i="${ii}" data-f="name" value="${esc(it.name)}" list="libList" placeholder="样式名称"></td>
+          <td><input class="cell-input" data-r="${rec.id}" data-b="${b.id}" data-i="${ii}" data-f="material" value="${esc(it.material)}" placeholder="材质工艺"></td>
+          <td><input class="cell-input num strong" data-r="${rec.id}" data-b="${b.id}" data-i="${ii}" data-f="price" type="number" min="0" step="0.01" value="${num(it.price)}"></td>
+          <td><input class="cell-input" data-r="${rec.id}" data-b="${b.id}" data-i="${ii}" data-f="size" value="${esc(it.size)}" placeholder="尺寸"></td>
+          <td><input class="cell-input" data-r="${rec.id}" data-b="${b.id}" data-i="${ii}" data-f="data" value="${esc(it.data)}" placeholder="数据"></td>
+          <td>
+            <input class="cell-input" data-r="${rec.id}" data-b="${b.id}" data-i="${ii}" data-f="remark" value="${esc(it.remark)}" placeholder="备注">
+            <div class="cell-img-wrap" data-dropzone="rec|${rec.id}|${b.id}|${ii}|remark" data-max="6">${thumbsHtml(it.remarkImgs || [], rec.id + '|' + b.id + '|' + ii + '|remark')}
+              <button class="img-add" type="button" data-addimg="${rec.id}|${b.id}|${ii}|remark">＋图</button>
+            </div>
+          </td>
+          <td>
+            <input class="cell-input" data-r="${rec.id}" data-b="${b.id}" data-i="${ii}" data-f="desc" value="${esc(it.desc)}" placeholder="说明">
+            <div class="cell-img-wrap" data-dropzone="rec|${rec.id}|${b.id}|${ii}|desc" data-max="6">${thumbsHtml(it.descImgs || [], rec.id + '|' + b.id + '|' + ii + '|desc')}
+              <button class="img-add" type="button" data-addimg="${rec.id}|${b.id}|${ii}|desc">＋图</button>
+            </div>
+          </td>
+          <td class="center"><button class="btn sm red" data-delitem="${rec.id}|${b.id}|${ii}">删</button></td>
+        </tr>`).join('');
+      return `
+      <div class="quote-block">
+        <div class="qb-top">
+          <div class="qb-title"><span class="idx">${bi + 1}</span>报价${bi + 1}
+            ${b.converted ? '<span class="tag green">已转预算表</span>' : '<span class="tag">待转换</span>'}
+          </div>
+          <div class="quote-price"><small>本报价合计</small>${fmt(bp)}</div>
+        </div>
+        <div class="table-scroll">
+          <table class="grid">
+            <colgroup>
+              <col style="width:16%"><col style="width:15%"><col style="width:10%"><col style="width:10%"><col style="width:11%"><col style="width:14%"><col style="width:14%"><col style="width:10%">
+            </colgroup>
+            <thead><tr><th>样式名称</th><th>材质工艺</th><th>报价<br><small style="font-weight:600">显示明明是</small></th><th>尺寸</th><th>数据</th><th>备注</th><th>说明</th><th>操作</th></tr></thead>
+            <tbody>${items}</tbody>
+          </table>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+          <button class="btn sm primary" data-additem="${rec.id}|${b.id}">+ 加一行</button>
+          <button class="btn sm" data-tobudget="${rec.id}|${b.id}">${b.converted ? '查看预算表' : '转预算表'}</button>
+          <button class="btn sm orange" data-tocust="${rec.id}|${b.id}">转报客户预算表</button>
+          <button class="btn sm" data-toorder="${rec.id}|${b.id}">转订单表</button>
+          ${b.converted ? '<button class="btn sm ghost" data-unconv="' + rec.id + '|' + b.id + '">取消转换</button>' : ''}
+        </div>
+      </div>`;
+    }).join('');
+    const active = (rec.id === activeRecId) ? ' active-rec' : '';
+    return `
+    <div class="rec-card${active}" data-recid="${rec.id}">
+      <div class="rec-head">
+        <div class="fi"><label>客户姓名</label><input data-recfield="${rec.id}" data-f="customer" value="${esc(rec.customer)}"></div>
+        <div class="fi"><label>报价日期</label><input type="date" data-recfield="${rec.id}" data-f="date" value="${esc(rec.date)}"></div>
+        <div class="fi"><label>渠道</label><input data-recfield="${rec.id}" data-f="channel" value="${esc(rec.channel)}"></div>
+        <div class="fi"><label>预计送货日期</label><input type="date" data-recfield="${rec.id}" data-f="delivery" value="${esc(rec.delivery)}"></div>
+        <div class="fi" style="max-width:240px"><label>送货地址</label><input data-recfield="${rec.id}" data-f="address" value="${esc(rec.address)}"></div>
+        <div class="rec-actions">
+          <span class="quote-price" style="font-size:17px"><small>整单合计</small>${fmt(quoteRecPrice(rec))}</span>
+          ${imgCount ? '<span class="tag green">📷 ' + imgCount + ' 张</span>' : ''}
+          <button class="btn sm" data-addblock="${rec.id}">+ 同订单多报价</button>
+          <button class="btn sm red" data-delrec="${rec.id}">删除</button>
+        </div>
+      </div>
+      ${blocks}
+    </div>`;
+  }).join('');
+
+  /* 点击卡片 → 设为活跃，左侧显示该记录图片 */
+  box.querySelectorAll('.rec-card').forEach(card => {
+    card.addEventListener('click', e => {
+      if (e.target.closest('input,button,textarea,select,a')) return;
+      const id = card.dataset.recid;
+      if (id && id !== activeRecId){
+        activeRecId = id;
+        box.querySelectorAll('.rec-card').forEach(c => c.classList.toggle('active-rec', c.dataset.recid === id));
+        renderSidebar();
+      }
+    });
+  });
+
+  box.querySelectorAll('input[data-recfield]').forEach(inp => inp.oninput = () => {
+    const rec = store.quotes.find(r => r.id === inp.dataset.recfield); if (!rec) return;
+    rec[inp.dataset.f] = inp.value; save();
+  });
+  box.querySelectorAll('input[data-r]').forEach(inp => inp.oninput = () => {
+    const rec = store.quotes.find(r => r.id === inp.dataset.r); if (!rec) return;
+    const blk = rec.blocks.find(b => b.id === inp.dataset.b); if (!blk) return;
+    const it = blk.items[+inp.dataset.i]; if (!it) return;
+    it[inp.dataset.f] = inp.dataset.f === 'price' ? num(inp.value) : inp.value;
+    if (inp.dataset.f === 'name'){
+      const lib = findLib(inp.value);
+      if (lib){ it.price = lib.price; if (!it.material) it.material = lib.material || ''; }
+    }
+    save();
+    const priceCell = inp.closest('tr').querySelector('input[data-f=price]');
+    if (priceCell) priceCell.value = num(it.price);
+    const qb = inp.closest('.quote-block'); if (qb){ const p = qb.querySelector('.quote-price'); p.innerHTML = '<small>本报价合计</small>' + fmt(quoteBlockPrice(blk)); }
+    const card = inp.closest('.rec-card');
+    const total = card ? card.querySelector('.rec-head .quote-price') : null;
+    if (total) total.innerHTML = '<small>整单合计</small>' + fmt(quoteRecPrice(rec));
+  });
+  box.querySelectorAll('button[data-addimg]').forEach(b => b.onclick = () => {
+    const [r, bl, i, f] = b.dataset.addimg.split('|');
+    const rec = store.quotes.find(x => x.id === r); if (!rec) return;
+    const blk = rec.blocks.find(x => x.id === bl); if (!blk) return;
+    const it = blk.items[+i]; if (!it) return;
+    const arr = f === 'remark' ? (it.remarkImgs = it.remarkImgs || []) : (it.descImgs = it.descImgs || []);
+    pickImgs(arr, 6, () => { save(); renderRecs(); });
+  });
+  box.querySelectorAll('.img-thumb .x[data-px]').forEach(x => x.onclick = () => {
+    if (!confirm('确定删除这张图片？')) return;
+    const p = x.dataset.px.split('|');
+    const rec = store.quotes.find(q => q.id === p[0]); if (!rec) return;
+    const blk = rec.blocks.find(q => q.id === p[1]); if (!blk) return;
+    const it = blk.items[+p[2]]; if (!it) return;
+    const arr = p[3] === 'remark' ? (it.remarkImgs || []) : (it.descImgs || []);
+    arr.splice(+x.dataset.i, 1); save(); renderRecs();
+  });
+  box.querySelectorAll('button[data-delitem]').forEach(b => b.onclick = () => {
+    if (!confirm('确定删除该明细行？')) return;
+    const [r, bl, i] = b.dataset.delitem.split('|');
+    const rec = store.quotes.find(x => x.id === r); const blk = rec.blocks.find(x => x.id === bl);
+    blk.items.splice(+i, 1); save(); renderRecs();
+  });
+  box.querySelectorAll('button[data-additem]').forEach(b => b.onclick = () => {
+    const [r, bl] = b.dataset.additem.split('|');
+    const rec = store.quotes.find(x => x.id === r); const blk = rec.blocks.find(x => x.id === bl);
+    blk.items.push({name:'', material:'', price:0, size:'', data:'', remark:'', desc:'', remarkImgs:[], descImgs:[]}); save(); renderRecs();
+  });
+  box.querySelectorAll('button[data-addblock]').forEach(b => b.onclick = () => {
+    const rec = store.quotes.find(x => x.id === b.dataset.addblock); if (!rec) return;
+    rec.blocks.push({id: nid(), items:[{name:'', material:'', price:0, size:'', data:'', remark:'', desc:'', remarkImgs:[], descImgs:[]}], converted:false});
+    save(); renderRecs();
+  });
+  box.querySelectorAll('button[data-delrec]').forEach(b => b.onclick = () => {
+    if (!confirm('确定删除该报价记录？此操作不可撤销。')) return;
+    const rid = b.dataset.delrec;
+    store.quotes = store.quotes.filter(x => x.id !== rid);
+    if (activeRecId === rid) activeRecId = null;
+    save(); renderRecs(); renderSidebar();
+  });
+  box.querySelectorAll('button[data-tobudget]').forEach(b => b.onclick = () => {
+    const [r, bl] = b.dataset.tobudget.split('|');
+    const rec = store.quotes.find(x => x.id === r); const blk = rec.blocks.find(x => x.id === bl);
+    if (!blk.converted){
+      blk.converted = true;
+      store.budget = {
+        customer: rec.customer, date: today(), channel: rec.channel, delivery: rec.delivery, address: rec.address,
+        m_name: blk.items[0] ? blk.items[0].name : '', m_spec: '', m_price: blk.items[0] ? blk.items[0].price : 0, m_qty: 1,
+        p_material:'', p_sided:'', p_price:0, p_qty:0,
+        w_byRoot:true, w_byArea:false, w_qty:0, w_price:0,
+        c_qty:0, c_price:0,
+        w_texture:false, w_assembly:false, m_laborNote:'', l_hours:0, l_price:0,
+        pl_qty:0, pl_price:0, m_orderQty:'', m_note:'',
+        acc:[{name:'花杆',size:'',qty:0,price:0,mat:''},{name:'底座',size:'',qty:0,price:0,mat:''},{name:'叶子',size:'',qty:0,price:0,mat:''},{name:'灯',size:'',qty:0,price:0,mat:''}],
+        note:''
+      };
+      save();
+    }
+    switchView('budget');
+  });
+  box.querySelectorAll('button[data-unconv]').forEach(b => b.onclick = () => {
+    const [r, bl] = b.dataset.unconv.split('|');
+    const rec = store.quotes.find(x => x.id === r); const blk = rec.blocks.find(x => x.id === bl);
+    blk.converted = false; save(); renderRecs();
+  });
+  box.querySelectorAll('button[data-tocust]').forEach(b => b.onclick = () => {
+    const [r, bl] = b.dataset.tocust.split('|');
+    const rec = store.quotes.find(x => x.id === r); const blk = rec.blocks.find(x => x.id === bl);
+    if (!store.budget) buildEmptyBudget();
+    store.budget.customer = rec.customer; store.budget.date = rec.date; store.budget.channel = rec.channel;
+    store.budget.delivery = rec.delivery; store.budget.address = rec.address;
+    if (blk.items[0]){ store.budget.m_name = blk.items[0].name; store.budget.m_price = blk.items[0].price; store.budget.m_qty = 1; }
+    store.cust.phone = ''; store.cust.freight = 0; store.cust.iron = 0; store.cust.install = 0; store.cust.discount = 0;
+    save();
+    toCustBudget();
+  });
+  box.querySelectorAll('button[data-toorder]').forEach(b => b.onclick = () => {
+    const [r, bl] = b.dataset.toorder.split('|');
+    const rec = store.quotes.find(x => x.id === r); const blk = rec.blocks.find(x => x.id === bl);
+    orderFromItems(blk.items, {customer: rec.customer, phone:'', delivery: rec.delivery, address: rec.address});
+  });
+}
+
+$('btnNewQuoteRec').onclick = () => {
+  const newRec = {
+    id: nid(), customer:'', date: today(), channel:'', delivery:'', address:'',
+    imgs: [],
+    blocks:[{id: nid(), items:[{name:'', material:'', price:0, size:'', data:'', remark:'', desc:'', remarkImgs:[], descImgs:[]}], converted:false}]
+  };
+  store.quotes.unshift(newRec);
+  activeRecId = newRec.id;
+  save();
+  switchSubQuote('quote-rec');
+  renderRecs();
+  renderSidebar();
+};
+
+function renderQuote(){
+  renderLibrary();
+  if (subQuote === 'quote-rec') renderRecs();
+}
+
+/* ===================== 预算表 ===================== */
+function emptyBudget(){
+  return {
+    customer:'', date: today(), channel:'', delivery:'', address:'',
+    m_name:'', m_spec:'', m_price:0, m_qty:0,
+    p_material:'', p_sided:'', p_price:0, p_qty:0,
+    w_byRoot:true, w_byArea:false, w_qty:0, w_price:0,
+    c_qty:0, c_price:0,
+    w_texture:false, w_assembly:false, m_laborNote:'', l_hours:0, l_price:0,
+    pl_qty:0, pl_price:0, m_orderQty:'', m_note:'',
+    acc:[
+      {name:'花杆', size:'', qty:0, price:0, mat:''},
+      {name:'底座', size:'', qty:0, price:0, mat:''},
+      {name:'叶子', size:'', qty:0, price:0, mat:''},
+      {name:'灯',   size:'', qty:0, price:0, mat:''}
+    ]
+  };
+}
+function buildEmptyBudget(){ store.budget = emptyBudget(); save(); }
+function getB(){ if (!store.budget) buildEmptyBudget(); return store.budget; }
+
+function bindBudgetInputs(){
+  const map = {
+    b_customer:'customer', b_date:'date', b_channel:'channel', b_delivery:'delivery', b_address:'address',
+    m_name:'m_name', m_spec:'m_spec', m_price:'m_price', m_qty:'m_qty',
+    p_material:'p_material', p_sided:'p_sided', p_price:'p_price', p_qty:'p_qty',
+    w_qty:'w_qty', w_price:'w_price', c_qty:'c_qty', c_price:'c_price',
+    m_laborNote:'m_laborNote', l_hours:'l_hours', l_price:'l_price',
+    pl_qty:'pl_qty', pl_price:'pl_price', m_orderQty:'m_orderQty', m_note:'m_note'
+  };
+  Object.keys(map).forEach(id => {
+    const el = $(id); if (!el) return;
+    el.oninput = () => { getB()[map[id]] = (el.type === 'number') ? num(el.value) : el.value; save(); calcBudget(); };
+  });
+  const checks = {w_byRoot:'w_byRoot', w_byArea:'w_byArea', w_texture:'w_texture', w_assembly:'w_assembly'};
+  Object.keys(checks).forEach(id => {
+    const el = $(id); if (!el) return;
+    el.onchange = () => {
+      const b = getB();
+      b[checks[id]] = el.checked;
+      if (id === 'w_byRoot' && el.checked) { b.w_byArea = false; $('w_byArea').checked = false; }
+      if (id === 'w_byArea' && el.checked) { b.w_byRoot = false; $('w_byRoot').checked = false; }
+      save(); calcBudget();
+    };
+  });
+  const acc = [['a1','花杆'],['a2','底座'],['a3','叶子'],['a4','灯']];
+  acc.forEach(([pre, name], idx) => {
+    ['size','qty','price','mat'].forEach(f => {
+      const el = $(pre + '_' + f); if (!el) return;
+      el.oninput = () => {
+        const b = getB(); const a = b.acc[idx];
+        a[f] = (f === 'qty' || f === 'price') ? num(el.value) : el.value;
+        save(); calcBudget();
+      };
+    });
+  });
+  $('m_name').onchange = () => {
+    const b = getB();
+    const lib = findLib($('m_name').value);
+    if (lib){
+      b.m_spec = lib.material || ''; b.m_price = lib.price;
+      $('m_spec').value = b.m_spec; $('m_price').value = b.m_price;
+    }
+    save(); calcBudget();
+  };
+}
+
+function calcBudget(){
+  const b = getB();
+  const m_sub = num(b.m_qty) * num(b.m_price);
+  const p_sub = num(b.p_qty) * num(b.p_price);
+  const w_sub = num(b.w_qty) * num(b.w_price);
+  const c_sub = num(b.c_qty) * num(b.c_price);
+  const l_sub = num(b.l_hours) * num(b.l_price);
+  const pl_sub = num(b.pl_qty) * num(b.pl_price);
+  const m_total = m_sub + w_sub + l_sub;
+  const p_total = p_sub + c_sub + pl_sub;
+  const headTotal = m_total + p_total;
+  const aSub = b.acc.map(a => num(a.qty) * num(a.price));
+  const accTotal = aSub.reduce((s, v) => s + v, 0);
+  const grand = headTotal + accTotal;
+
+  const set = (id, v) => { const el = $(id); if (!el) return; el.textContent = fmt(v); };
+  set('m_sub', m_sub); set('p_sub', p_sub); set('w_sub', w_sub); set('c_sub', c_sub);
+  set('l_sub', l_sub); set('pl_sub', pl_sub);
+  set('m_total', m_total); set('p_total', p_total);
+  ['a1','a2','a3','a4'].forEach((pre, i) => set(pre + '_sub', aSub[i]));
+  set('headTotal', headTotal); set('accTotal', accTotal);
+
+  $('budgetGrandTotal').textContent = fmt(grand);
+  $('budgetBreakdown').innerHTML =
+    '主材 ' + fmt(m_sub) + '<br>铁丝 ' + fmt(w_sub) + ' · 人工 ' + fmt(l_sub) + '<br>' +
+    '颜料 ' + fmt(p_sub) + ' · 花蕊 ' + fmt(c_sub) + ' · 颜料人工 ' + fmt(pl_sub) + '<br>辅料 ' + fmt(accTotal);
+
+  $('m_meta').textContent = b.m_orderQty ? ('订购数量：' + b.m_orderQty) : '';
+  $('p_meta').textContent = b.m_note ? ('备注：' + b.m_note) : '';
+}
+
+function renderBudget(){
+  const b = getB();
+  const setV = (id, v) => { const el = $(id); if (!el) return; el.value = v == null ? '' : v; };
+  setV('b_customer', b.customer); setV('b_date', b.date); setV('b_channel', b.channel);
+  setV('b_delivery', b.delivery); setV('b_address', b.address);
+  setV('m_name', b.m_name); setV('m_spec', b.m_spec); setV('m_price', b.m_price); setV('m_qty', b.m_qty);
+  setV('p_material', b.p_material); setV('p_sided', b.p_sided); setV('p_price', b.p_price); setV('p_qty', b.p_qty);
+  $('w_byRoot').checked = !!b.w_byRoot; $('w_byArea').checked = !!b.w_byArea;
+  setV('w_qty', b.w_qty); setV('w_price', b.w_price);
+  setV('c_qty', b.c_qty); setV('c_price', b.c_price);
+  $('w_texture').checked = !!b.w_texture; $('w_assembly').checked = !!b.w_assembly;
+  setV('m_laborNote', b.m_laborNote); setV('l_hours', b.l_hours); setV('l_price', b.l_price);
+  setV('pl_qty', b.pl_qty); setV('pl_price', b.pl_price);
+  setV('m_orderQty', b.m_orderQty); setV('m_note', b.m_note);
+  b.acc.forEach((a, i) => {
+    setV('a' + (i + 1) + '_size', a.size); setV('a' + (i + 1) + '_qty', a.qty);
+    setV('a' + (i + 1) + '_price', a.price); setV('a' + (i + 1) + '_mat', a.mat);
+  });
+  calcBudget();
+}
+
+function syncSmartMatList(){
+  const sel = $('s_mat'); if (!sel) return;
+  const mats = [...new Set(store.library.map(i => i.material).filter(Boolean))];
+  sel.innerHTML = '<option value="">全部</option>' + mats.map(m => '<option value="' + esc(m) + '">' + esc(m) + '</option>').join('');
+}
+function parseSmartArea(txt){
+  txt = String(txt || '').trim();
+  if (!txt) return 0;
+  if (/x|×|\*/.test(txt)){
+    const parts = txt.split(/x|×|\*/).map(s => parseFloat(s)).filter(v => isFinite(v) && v > 0);
+    if (parts.length >= 2) return parts[0] * parts[1];
+  }
+  const n = parseFloat(txt);
+  return isFinite(n) ? n : 0;
+}
+function normSmartSize(txt){
+  txt = String(txt || '').trim();
+  if (!txt) return '';
+  let t = txt.toLowerCase();
+  if (/^\d+(\.\d+)?m$/.test(t)) return t;
+  if (/^\d+(\.\d+)?cm$/.test(t)){
+    const cm = parseFloat(t);
+    return (cm >= 100 ? cm / 100 : cm) + (cm >= 100 ? 'm' : 'cm');
+  }
+  return t;
+}
+function smartCalc(){
+  const cat = $('s_mat').value;
+  const material = $('s_material').value.trim();
+  const petal = $('s_petal').value.trim();
+  const sizeRaw = $('s_size').value.trim();
+  const qty = num($('s_qty').value) || 1;
+  const areaRaw = $('s_area').value.trim();
+  const area = areaRaw ? parseSmartArea(areaRaw) : (sizeRaw.indexOf('*') >= 0 || sizeRaw.indexOf('x') >= 0 || sizeRaw.indexOf('×') >= 0 ? parseSmartArea(sizeRaw) : 0);
+  const sizeNorm = normSmartSize(sizeRaw);
+  const sizeCm = sizeNorm.endsWith('m') ? parseFloat(sizeNorm) * 100 : parseFloat(sizeNorm);
+
+  let cands = store.library.filter(i => !cat || i.material === cat);
+  const scored = cands.map(i => {
+    let score = 0; const reasons = [];
+    const nm = i.name; const note = i.note || '';
+    if (sizeNorm){
+      if (nm.includes(sizeNorm)) { score += 6; reasons.push('名称尺寸精确匹配'); }
+      else if (nm.includes(sizeRaw)) { score += 5; reasons.push('名称尺寸匹配'); }
+      else if (sizeCm && (nm.includes(sizeCm + 'cm') || nm.includes(sizeCm + 'CM') || nm.includes(sizeCm + 'Cm'))) { score += 4; reasons.push('尺寸换算匹配'); }
+      else if (sizeNorm.length >= 2 && nm.includes(sizeNorm.slice(0, Math.max(2, sizeNorm.length - 2)))) { score += 2; reasons.push('尺寸近似'); }
+    }
+    if (material){
+      if (i.material === material) { score += 4; reasons.push('材质工艺一致'); }
+      else if (i.material.includes(material) || nm.includes(material)) { score += 2; reasons.push('材质相关'); }
+    }
+    if (petal){
+      const pn = petal.replace(/[^0-9+]/g, '');
+      if (note.includes('花瓣' + pn)) { score += 4; reasons.push('花瓣数量匹配'); }
+      else {
+        const nums = (note.match(/花瓣[\d+\s]+/) || [''])[0];
+        const sum = nums.split(/[+\s]/).map(s => parseInt(s, 10)).filter(v => isFinite(v)).reduce((a, b) => a + b, 0);
+        const want = parseInt(pn.split('+').map(s => parseInt(s, 10)).filter(v => isFinite(v)).reduce((a, b) => a + b, 0), 10) || 0;
+        if (sum && want && Math.abs(sum - want) <= 2) { score += 3; reasons.push('花瓣总数相近'); }
+      }
+    }
+    return { it: i, score, reasons, area };
+  }).filter(x => x.score > 0 || (!sizeNorm && !material && !petal && (!cat || x.it.material === cat)))
+    .sort((a, b) => b.score - a.score || num(a.it.price) - num(b.it.price));
+
+  const best = scored[0] || null;
+  let areaEst = null;
+  if (area > 0){
+    const areaItems = store.library.filter(i => i.unit === 'm' || i.unit === '片' || i.unit === '㎡');
+    const sz = areaItems.map(i => {
+      const mx = (i.name.match(/\d+(?:\.\d+)?m[×*]\d+(?:\.\d+)?m|长\d+(?:\.\d+)?(?:m|cm)?\D{0,6}宽\d+(?:\.\d+)?(?:m|cm)/) || [''])[0];
+      return { it: i, mx };
+    }).filter(x => x.mx);
+    if (sz.length){
+      const bestArea = sz.sort((a, b) => Math.abs(itemArea(a.mx) - area) - Math.abs(itemArea(b.mx) - area))[0];
+      if (itemArea(bestArea.mx) > 0) areaEst = { it: bestArea.it, est: area * num(bestArea.it.price), area };
+    } else {
+      const perM = scored.find(x => x.it.unit === 'm');
+      if (perM) areaEst = { it: perM.it, est: area * num(perM.it.price), area };
+    }
+  }
+  renderSmartResult(best, scored.slice(0, 10), areaEst, qty);
+}
+function itemArea(mx){
+  const mm = String(mx).match(/(\d+(?:\.\d+)?)(m|cm)[×*](\d+(?:\.\d+)?)(m|cm)/);
+  if (mm){ const f = (v, u) => u === 'm' ? +v : +v / 100; return f(mm[1], mm[2]) * f(mm[3], mm[4]); }
+  const lw = String(mx).match(/长(\d+(?:\.\d+)?)\s*(m|cm)?\D{0,6}宽(\d+(?:\.\d+)?)\s*(m|cm)/);
+  if (lw){
+    const f = (v, u) => (!u || u === 'cm') ? +v / 100 : +v;
+    return f(lw[1], lw[2]) * f(lw[3], lw[4]);
+  }
+  return 0;
+}
+function renderSmartResult(best, sims, areaEst, qty){
+  const box = $('smartResult'); box.style.display = '';
+  let h = '';
+  if (best){
+    const pr = fmt(num(best.it.price) * qty);
+    h += '<div class="smart-match">' +
+      '<div><span class="nm">' + esc(best.it.name) + '</span><span class="pr">' + fmt(num(best.it.price)) + ' 元/' + esc(best.it.unit) + '</span>' +
+      '<span style="font-size:12px;color:var(--muted)"> × ' + qty + ' = ' + pr + '</span></div>' +
+      '<div style="font-size:12px;color:var(--muted);margin-top:4px">材质工艺：' + esc(best.it.material || '—') + ' · 匹配依据：' + (best.reasons.join('、') || '分类内价格最低') + '</div>' +
+      '<div style="margin-top:8px;display:flex;gap:8px"><button class="btn primary sm" data-pick="' + best.it.id + '">选用并填入主材</button>' +
+      (best.it.note ? '<span style="font-size:12px;color:var(--muted);align-self:center">' + esc(best.it.note.slice(0, 60)) + '</span>' : '') + '</div></div>';
+  } else {
+    h += '<div class="smart-match"><span class="nm">未找到精确匹配</span><div style="font-size:12px;color:var(--muted);margin-top:4px">放宽条件试试：清空尺寸或选择“全部”分类</div></div>';
+  }
+  if (areaEst){
+    h += '<div class="smart-match"><span class="nm">面积测算</span><span class="pr">约 ' + fmt(areaEst.est) + ' 元</span>' +
+      '<div style="font-size:12px;color:var(--muted);margin-top:4px">面积 ' + areaEst.area.toFixed(2) + ' ㎡ × ' + fmt(num(areaEst.it.price)) + ' 元/' + esc(areaEst.it.unit) + '（' + esc(areaEst.it.name) + '）</div></div>';
+  }
+  if (sims.length){
+    h += '<h4>相似售价（价格库，点击选用）</h4><table class="smart-sims"><thead><tr><th>样式名称</th><th>材质工艺</th><th>单价</th><th>单位</th><th></th></tr></thead><tbody>';
+    h += sims.map(x => '<tr><td>' + esc(x.it.name) + '</td><td>' + esc(x.it.material || '—') + '</td><td>' + fmt(num(x.it.price)) + '</td><td>' + esc(x.it.unit) + '</td>' +
+      '<td class="pick" data-pick="' + x.it.id + '">选用</td></tr>').join('');
+    h += '</tbody></table>';
+  } else {
+    h += '<div style="font-size:12px;color:var(--muted)">无相似报价项</div>';
+  }
+  box.innerHTML = h;
+  box.querySelectorAll('[data-pick]').forEach(b => b.onclick = () => fillSmart(+b.dataset.pick));
+}
+function fillSmart(id){
+  const it = store.library.find(i => i.id === id); if (!it) return;
+  const b = getB();
+  b.m_name = it.name; b.m_spec = it.material + (it.note ? '；' + it.note.slice(0, 40) : '');
+  b.m_price = num(it.price); b.m_qty = num($('s_qty').value) || 1;
+  $('m_name').value = b.m_name; $('m_spec').value = b.m_spec;
+  $('m_price').value = b.m_price; $('m_qty').value = b.m_qty;
+  calcBudget(); save();
+  alert('已填入主材：' + it.name + ' ' + fmt(num(it.price)) + '元/' + it.unit);
+}
+document.querySelectorAll('.mode-tab').forEach(t => t.onclick = () => {
+  budgetMode = t.dataset.mode;
+  document.querySelectorAll('.mode-tab').forEach(x => x.classList.toggle('active', x === t));
+  if (budgetMode === 'smart'){
+    $('smartPanel').style.display = ''; syncSmartMatList();
+  } else {
+    $('smartPanel').style.display = 'none';
+  }
+});
+$('btnSmartCalc').onclick = () => smartCalc();
+$('btnSmartClear').onclick = () => {
+  ['s_mat','s_material','s_petal','s_size','s_area'].forEach(id => { const el = $(id); if (el) el.value = ''; });
+  $('s_qty').value = 1; $('smartResult').style.display = 'none';
+};
+$('btnSaveTemplate').onclick = () => {
+  store.budgetTemplate = JSON.parse(JSON.stringify(getB()));
+  save(); alert('已保存为模板，下次创建新预算可一键带出。');
+};
+$('btnNewBudget').onclick = () => {
+  if (!confirm('创建新预算将清空当前明细，确定继续？')) return;
+  if (store.budgetTemplate){
+    store.budget = JSON.parse(JSON.stringify(store.budgetTemplate));
+  } else {
+    buildEmptyBudget();
+  }
+  save(); renderBudget(); renderSidebar();
+};
+
+/* ===================== 报客户预算表 ===================== */
+function toCustBudget(){
+  const b = getB();
+  $('budget-main').style.display = 'none';
+  $('budget-cust').style.display = '';
+  $('cb_customer').textContent = b.customer || '—';
+  $('cb_date').textContent = b.date || '—';
+  $('cb_delivery').textContent = b.delivery || '—';
+  $('cb_address').textContent = b.address || '—';
+  $('cb_phone').value = store.cust.phone || '';
+  const rows = [];
+  if (b.m_name) rows.push({name: b.m_name, mat: b.m_spec || '主材', size: b.m_spec, price: b.m_price, qty: b.m_qty, note: b.m_orderQty});
+  if (b.w_qty && b.w_price) rows.push({name: '铁丝（' + (b.w_byRoot ? '按根' : '按面积') + '）', mat: '', size: '', price: b.w_price, qty: b.w_qty, note: ''});
+  if (b.l_hours && b.l_price) rows.push({name: '人工（' + [b.w_texture?'纹理':'', b.w_assembly?'组装':''].filter(Boolean).join('·') + '）', mat: b.m_laborNote, size: '', price: b.l_price, qty: b.l_hours, note: ''});
+  if (b.p_qty && b.p_price) rows.push({name: '颜料', mat: b.p_material, size: '', price: b.p_price, qty: b.p_qty, note: b.p_sided});
+  if (b.c_qty && b.c_price) rows.push({name: '花蕊', mat: '', size: '', price: b.c_price, qty: b.c_qty, note: ''});
+  if (b.pl_qty && b.pl_price) rows.push({name: '颜料人工', mat: '', size: '', price: b.pl_price, qty: b.pl_qty, note: ''});
+  b.acc.forEach(a => { if (a.qty && a.price) rows.push({name: a.name, mat: a.mat, size: a.size, price: a.price, qty: a.qty, note: ''}); });
+  const tb = $('cbTbody');
+  if (!rows.length){
+    tb.innerHTML = '<tr><td colspan="8"><div class="empty">预算明细为空，请先在预算表填写后再转出</div></td></tr>';
+  } else {
+    tb.innerHTML = rows.map((r, i) => `<tr>
+      <td class="center">${i + 1}</td>
+      <td class="center strong">${esc(r.name)}</td>
+      <td class="center">${esc(r.mat || '')}</td>
+      <td class="center">${esc(r.size || '')}</td>
+      <td class="num">${fmt(r.price)}</td>
+      <td class="num">${r.qty}</td>
+      <td class="num money">${fmt(num(r.price) * num(r.qty))}</td>
+      <td class="center" style="font-size:12px;color:var(--muted)">${esc(r.note || '')}</td>
+    </tr>`).join('');
+  }
+  updateCustSummary();
+}
+function updateCustSummary(){
+  const total = totalOfBudget();
+  $('cb_t1').textContent = fmt(total);
+  $('cb_qty').textContent = qtyOfBudget();
+  const amount = total + num(store.cust.freight) + num(store.cust.iron) + num(store.cust.install) - num(store.cust.discount);
+  $('cb_amount').textContent = fmt(Math.max(0, amount));
+}
+function totalOfBudget(){
+  const b = getB();
+  return (num(b.m_qty)*num(b.m_price)) + (num(b.w_qty)*num(b.w_price)) + (num(b.l_hours)*num(b.l_price)) +
+         (num(b.p_qty)*num(b.p_price)) + (num(b.c_qty)*num(b.c_price)) + (num(b.pl_qty)*num(b.pl_price)) +
+         b.acc.reduce((s,a) => s + num(a.qty)*num(a.price), 0);
+}
+function qtyOfBudget(){
+  const b = getB();
+  return num(b.m_qty) + num(b.w_qty) + num(b.p_qty) + num(b.c_qty) + num(b.pl_qty) + b.acc.reduce((s,a) => s + num(a.qty), 0);
+}
+$('btnToCustBudget').onclick = () => toCustBudget();
+$('btnBackToBudget').onclick = () => { $('budget-cust').style.display = 'none'; $('budget-main').style.display = ''; };
+[['cb_freight','freight'],['cb_iron','iron'],['cb_install','install'],['cb_discount','discount']].forEach(([id, f]) => {
+  $(id).oninput = () => { store.cust[f] = num($(id).value); save(); updateCustSummary(); };
+});
+$('cb_phone').oninput = () => { store.cust.phone = $('cb_phone').value; save(); };
+
+/* ===================== 预算转订单 ===================== */
+function budgetToOrder(){
+  const b = getB();
+  const rows = [];
+  const notes = [];
+  if (b.m_name){
+    rows.push({h:{name:b.m_name, size:b.m_spec||'', qty:num(b.m_qty)||1, price:num(b.m_price)}, l:{size:'',qty:0,price:0}, s:{size:'',qty:0,price:0}, b:{qty:0,price:0}, img:null});
+  }
+  const G = {花杆:'s', 底座:'b', 叶子:'l'};
+  b.acc.forEach(a => {
+    if (!num(a.qty) && !num(a.price)) return;
+    if (a.name === '灯'){
+      notes.push('灯：' + (a.size||'') + (num(a.qty)?' '+num(a.qty)+'个':'') + (a.mat?'（'+a.mat+'）':''));
+      return;
+    }
+    const r = emptyRow();
+    const k = G[a.name] || 'h';
+    if (k === 'h') r.h = {name:a.name, size:a.size||'', qty:num(a.qty), price:num(a.price)};
+    else r[k] = {size:a.size||'', qty:num(a.qty), price:num(a.price)};
+    rows.push(r);
+  });
+  if (!rows.length){ alert('预算明细为空，无法生成订单。请先填写主材或辅料。'); return; }
+  store.order = {
+    customer: b.customer || '', phone:'', delivery: b.delivery || '', address: b.address || '',
+    receive:'发货', type:'定制', version:1,
+    rows, v2:[], freight: num(store.cust.freight), install: num(store.cust.install),
+    note: notes.join('；'), deposit:'', balance:''
+  };
+  save(); switchView('order');
+}
+$('btnBudgetToOrder').onclick = () => budgetToOrder();
+$('btnBackToRecs').onclick = () => { switchView('quote'); switchSubQuote('quote-rec'); };
+
+/* ===================== 订单表 ===================== */
+function emptyRow(){
+  return { h:{name:'',size:'',qty:0,price:0}, l:{size:'',qty:0,price:0}, s:{size:'',qty:0,price:0}, b:{qty:0,price:0}, img:null };
+}
+function emptyV2(){
+  return { name:'', color:'', size:'', qty:0, unit:'个', price:0, disc:0, note:'', img:null };
+}
+function emptyOrder(){
+  return {
+    customer:'', phone:'', delivery:'', address:'', receive:'发货', type:'定制',
+    version:1, rows:[emptyRow(),emptyRow(),emptyRow(),emptyRow()], v2:[], freight:0, install:0, note:'', deposit:'', balance:''
+  };
+}
+function getO(){
+  if (!store.order) store.order = emptyOrder();
+  const o = store.order;
+  if (o.items && o.items.length && !o.rows){
+    const rows = [];
+    o.items.forEach(it => {
+      const g = groupOf(it.name);
+      const qty = num(it.qty) || 1;
+      const price = num(it.price);
+      if (g === '花头') rows.push({h:{name:it.name||'', size:it.size||'', qty, price}, l:{size:'',qty:0,price:0}, s:{size:'',qty:0,price:0}, b:{qty:0,price:0}, img:null});
+      else if (g === '叶子'){ const r = emptyRow(); r.l = {size:it.size||'', qty, price}; rows.push(r); }
+      else if (g === '杆子'){ const r = emptyRow(); r.s = {size:it.size||'', qty, price}; rows.push(r); }
+      else { const r = emptyRow(); r.b = {qty, price}; rows.push(r); }
+    });
+    o.rows = rows; o.v2 = []; delete o.items;
+    save();
+  }
+  return o;
+}
+function findLib(name){
+  name = String(name || '').trim();
+  if (!name) return null;
+  let it = store.library.find(i => i.name === name);
+  if (it) return it;
+  return store.library.find(i => i.name.includes(name)) || null;
+}
+function groupOf(name){
+  const n = String(name || '');
+  if (/花头|牡丹|玫瑰|郁金香|花$/.test(n)) return '花头';
+  if (/叶子|叶/.test(n)) return '叶子';
+  if (/杆|铁丝|花杆/.test(n)) return '杆子';
+  if (/底座|座/.test(n)) return '底座';
+  return '花头';
+}
+function orderFromItems(items, info){
+  const o = emptyOrder();
+  o.customer = info.customer || ''; o.phone = info.phone || '';
+  o.delivery = info.delivery || ''; o.address = info.address || '';
+  const rows = [];
+  const notes = [];
+  items.forEach(it => {
+    const g = groupOf(it.name);
+    const qty = parseInt(String(it.data || '').replace(/[^\d]/g, '')) || num(it.qty) || 1;
+    const price = num(it.price);
+    const size = it.size || '';
+    if (g === '花头'){
+      rows.push({h:{name:it.name||'', size, qty, price}, l:{size:'',qty:0,price:0}, s:{size:'',qty:0,price:0}, b:{qty:0,price:0}, img:null});
+    } else if (g === '叶子'){
+      const r = emptyRow(); r.l = {size, qty, price}; rows.push(r);
+      notes.push('叶子：' + (it.name||'') + (size ? ' ' + size : ''));
+    } else if (g === '杆子'){
+      const r = emptyRow(); r.s = {size, qty, price}; rows.push(r);
+      notes.push('杆子：' + (it.name||''));
+    } else {
+      const r = emptyRow(); r.b = {qty, price}; rows.push(r);
+      notes.push('底座：' + (it.name||'') + (size ? ' ' + size : ''));
+    }
+  });
+  o.rows = rows.length ? rows : [emptyRow(),emptyRow(),emptyRow(),emptyRow()];
+  o.note = notes.join('；');
+  o.version = 1;
+  store.order = o; save();
+  switchView('order');
+}
+
+function renderOrder(){
+  try { syncDatalist(); } catch(e){}
+  const o = getO();
+  if (o.version && o.version !== orderVer) orderVer = o.version;
+  const make = orderMake;
+  document.querySelectorAll('.ver-tab').forEach(t => t.classList.toggle('active', +t.dataset.ver === orderVer));
+  const osv = $('osVersion'); if (osv) osv.textContent = orderVer === 1 ? '一' : (orderVer === 2 ? '二' : '三');
+  const v1 = $('orderV1'), v2 = $('orderV2');
+  if (orderVer === 2){ v1.style.display = 'none'; v2.style.display = ''; }
+  else { v1.style.display = ''; v2.style.display = 'none'; }
+
+  const setV = (id, v) => { const el = $(id); if (el) el.value = v == null ? '' : v; };
+  setV('o_customer', o.customer); setV('o_phone', o.phone); setV('o_delivery', o.delivery); setV('o_address', o.address);
+  ['o_customer','o_phone','o_delivery','o_address'].forEach(id => {
+    $(id).oninput = () => { o[id.slice(2)] = $(id).value; save(); };
+  });
+
+  if (orderVer === 2) renderV2(o, make); else renderV1(o, make);
+
+  const dv = $('o_deposit_view'), bv = $('o_balance_view');
+  if (dv && bv){
+    dv.innerHTML = '<input value="' + esc(o.deposit || '') + '" placeholder="定金金额">';
+    bv.innerHTML = '<input value="' + esc(o.balance || '') + '" placeholder="尾款金额">';
+    dv.querySelector('input').oninput = e => { o.deposit = e.target.value; save(); };
+    bv.querySelector('input').oninput = e => { o.balance = e.target.value; save(); };
+  }
+}
+function colsHtml(hs, ls, ss, bs){
+  const total = 8 * hs + 6 * ls + 6 * ss + 7 * bs + 4.5 * 2 + 9;
+  let s = '';
+  const mk = (w, n) => { for (let i = 0; i < n; i++) s += '<col style="width:' + (w / total * 100).toFixed(2) + '%">'; };
+  mk(8, hs); mk(6, ls); mk(6, ss); mk(7, bs); mk(4.5, 2); mk(9, 1);
+  return s;
+}
+function renderV1(o, make){
+  const imgMode = make || orderVer === 3;
+  const priceOn = !make;
+  const hs = make ? 3 : 5, ls = make ? 2 : 4, ss = make ? 2 : 4, bs = make ? 1 : 3;
+  let thead = '<tr>' +
+    '<th colspan="' + hs + '">花头</th><th colspan="' + ls + '">叶子</th><th colspan="' + ss + '">杆子</th><th colspan="' + bs + '">底座</th>' +
+    '<th>运费</th><th>安装</th><th>' + (imgMode ? '图片' : '备注') + '</th></tr>';
+  let h2 = '<tr><th>名称</th><th>尺寸</th><th>数量</th>' + (priceOn ? '<th>单价</th><th>总价</th>' : '');
+  h2 += '<th>尺寸</th><th>数量</th>' + (priceOn ? '<th>单价</th><th>总价</th>' : '');
+  h2 += '<th>尺寸</th><th>数量</th>' + (priceOn ? '<th>单价</th><th>总价</th>' : '');
+  h2 += '<th>数量</th>' + (priceOn ? '<th>单价</th><th>总价</th>' : '');
+  h2 += '<th><input id="o_freight" type="number" min="0" step="0.01" value="' + num(o.freight) + '" title="运费"></th>';
+  h2 += '<th><input id="o_install" type="number" min="0" step="0.01" value="' + num(o.install) + '" title="安装"></th>';
+  h2 += imgMode ? '<th></th>' : '<th><input id="o_note" value="' + esc(o.note) + '" placeholder="备注"></th>';
+  h2 += '</tr>';
+  thead += h2;
+  if (!o.rows || !o.rows.length) o.rows = [emptyRow()];
+  const rows = o.rows;
+  const tbody = rows.map((r, idx) => {
+    const H = r.h || {}, L = r.l || {}, S = r.s || {}, B = r.b || {};
+    let tr = '<tr>';
+    tr += '<td><input data-row="' + idx + '" data-g="h" data-f="name" value="' + esc(H.name) + '" list="libList" placeholder="名称" autocomplete="off"></td>';
+    tr += '<td><input data-row="' + idx + '" data-g="h" data-f="size" value="' + esc(H.size) + '" placeholder="尺寸"></td>';
+    tr += '<td><input data-row="' + idx + '" data-g="h" data-f="qty" type="number" min="0" step="1" value="' + num(H.qty) + '"></td>';
+    if (priceOn) tr += '<td><input data-row="' + idx + '" data-g="h" data-f="price" type="number" min="0" step="0.01" value="' + num(H.price) + '"></td><td class="st" data-st="' + idx + '_h">' + fmt(num(H.qty) * num(H.price)) + '</td>';
+    tr += '<td><input data-row="' + idx + '" data-g="l" data-f="size" value="' + esc(L.size) + '" placeholder="尺寸"></td>';
+    tr += '<td><input data-row="' + idx + '" data-g="l" data-f="qty" type="number" min="0" step="1" value="' + num(L.qty) + '"></td>';
+    if (priceOn) tr += '<td><input data-row="' + idx + '" data-g="l" data-f="price" type="number" min="0" step="0.01" value="' + num(L.price) + '"></td><td class="st" data-st="' + idx + '_l">' + fmt(num(L.qty) * num(L.price)) + '</td>';
+    tr += '<td><input data-row="' + idx + '" data-g="s" data-f="size" value="' + esc(S.size) + '" placeholder="尺寸"></td>';
+    tr += '<td><input data-row="' + idx + '" data-g="s" data-f="qty" type="number" min="0" step="1" value="' + num(S.qty) + '"></td>';
+    if (priceOn) tr += '<td><input data-row="' + idx + '" data-g="s" data-f="price" type="number" min="0" step="0.01" value="' + num(S.price) + '"></td><td class="st" data-st="' + idx + '_s">' + fmt(num(S.qty) * num(S.price)) + '</td>';
+    tr += '<td><input data-row="' + idx + '" data-g="b" data-f="qty" type="number" min="0" step="1" value="' + num(B.qty) + '"></td>';
+    if (priceOn) tr += '<td><input data-row="' + idx + '" data-g="b" data-f="price" type="number" min="0" step="0.01" value="' + num(B.price) + '"></td><td class="st" data-st="' + idx + '_b">' + fmt(num(B.qty) * num(B.price)) + '</td>';
+    if (imgMode){
+      tr += '<td></td><td></td><td class="img-cell" data-dropzone="orow|' + idx + '" data-max="3"><div class="img-grid">' + thumbsHtml(r.img, 'row|' + idx) + '</div>' +
+        '<button class="img-add" type="button" data-rowimg="' + idx + '" style="min-width:34px;height:34px;font-size:11px">＋图</button></td>';
+    } else tr += '<td></td><td></td><td></td>';
+    tr += '</tr>';
+    return tr;
+  }).join('');
+  const hSum = rows.reduce((s, r) => s + num(r.h ? r.h.qty : 0) * num(r.h ? r.h.price : 0), 0);
+  const lSum = rows.reduce((s, r) => s + num(r.l ? r.l.qty : 0) * num(r.l ? r.l.price : 0), 0);
+  const sSum = rows.reduce((s, r) => s + num(r.s ? r.s.qty : 0) * num(r.s ? r.s.price : 0), 0);
+  const bSum = rows.reduce((s, r) => s + num(r.b ? r.b.qty : 0) * num(r.b ? r.b.price : 0), 0);
+  const grand = hSum + lSum + sSum + bSum + num(o.freight) + num(o.install);
+  let tfoot = '<tr>' +
+    '<th colspan="' + (hs - 1) + '">合计</th><th data-ft="h">' + fmt(hSum) + '</th>' +
+    '<th colspan="' + (ls - 1) + '"></th><th data-ft="l">' + fmt(lSum) + '</th>' +
+    '<th colspan="' + (ss - 1) + '"></th><th data-ft="s">' + fmt(sSum) + '</th>' +
+    '<th colspan="' + (bs - 1) + '"></th><th data-ft="b">' + fmt(bSum) + '</th>' +
+    '<th data-ft="f">' + fmt(num(o.freight)) + '</th><th data-ft="i">' + fmt(num(o.install)) + '</th>' +
+    (make ? '<th>总价</th>' : '<th class="st" data-ft="grand">总价 ' + fmt(grand) + '</th>') +
+    '</tr>';
+  const tbl = $('orderV1Table');
+  tbl.innerHTML = '<colgroup>' + colsHtml(hs, ls, ss, bs) + '</colgroup><thead>' + thead + '</thead><tbody>' + tbody + '</tbody><tfoot>' + tfoot + '</tfoot>';
+  tbl.querySelectorAll('input[data-row]').forEach(inp => {
+    inp.oninput = () => {
+      const r = o.rows[+inp.dataset.row]; if (!r) return;
+      const g = inp.dataset.g; if (!r[g]) r[g] = {};
+      const f = inp.dataset.f;
+      r[g][f] = (f === 'qty' || f === 'price') ? num(inp.value) : inp.value;
+      save(); calcOrder();
+    };
+    if (inp.dataset.f === 'name' && inp.dataset.g === 'h'){
+      inp.onchange = () => {
+        const lib = findLib(inp.value);
+        if (lib){
+          const r = o.rows[+inp.dataset.row];
+          r.h.price = lib.price;
+          const priceInput = tbl.querySelector('input[data-row="' + inp.dataset.row + '"][data-g="h"][data-f="price"]');
+          if (priceInput) priceInput.value = lib.price;
+          save(); calcOrder();
+        }
+      };
+    }
+  });
+  tbl.querySelectorAll('button[data-rowimg]').forEach(b => b.onclick = () => {
+    const r = o.rows[+b.dataset.rowimg];
+    if (!r.img) r.img = [];
+    pickImgs(r.img, 3, () => { save(); renderOrder(); });
+  });
+  tbl.querySelectorAll('.img-thumb .x[data-px]').forEach(x => x.onclick = () => {
+    if (!confirm('确定删除这张图片？')) return;
+    const [, idx] = x.dataset.px.split('|');
+    const r = o.rows[+idx]; if (!r || !r.img) return;
+    r.img.splice(+x.dataset.i, 1); save(); renderOrder();
+  });
+  if ($('o_freight')) $('o_freight').oninput = () => { o.freight = num($('o_freight').value); save(); calcOrder(); };
+  if ($('o_install')) $('o_install').oninput = () => { o.install = num($('o_install').value); save(); calcOrder(); };
+  if ($('o_note')) $('o_note').oninput = () => { o.note = $('o_note').value; save(); };
+  $('btnV1AddRow').onclick = () => { if (!o.rows) o.rows = []; o.rows.push(emptyRow()); save(); renderOrder(); };
+  $('btnV1DelRow').onclick = () => {
+    if (!o.rows || o.rows.length <= 1){ alert('至少保留一行'); return; }
+    if (!confirm('确定删除最后一行？')) return;
+    o.rows.pop(); save(); renderOrder();
+  };
+}
+function renderV2(o, make){
+  const priceOn = !make;
+  if (!o.v2 || !o.v2.length) o.v2 = [emptyV2()];
+  const rows = o.v2;
+  const thead = '<tr><th>序号</th><th>款式/材质</th><th>颜色</th><th>尺寸</th><th>数量</th><th>单位</th>' +
+    (priceOn ? '<th>单价</th><th>金额</th><th>折后价</th>' : '') + '<th>备注</th><th>参考图</th></tr>';
+  const tbody = rows.map((r, idx) => {
+    let tr = '<tr><td>' + (idx + 1) + '</td>';
+    tr += '<td><input data-v2="' + idx + '" data-f="name" value="' + esc(r.name) + '" list="libList" placeholder="款式/材质" autocomplete="off"></td>';
+    tr += '<td><input data-v2="' + idx + '" data-f="color" value="' + esc(r.color) + '" placeholder="颜色"></td>';
+    tr += '<td><input data-v2="' + idx + '" data-f="size" value="' + esc(r.size) + '" placeholder="尺寸"></td>';
+    tr += '<td><input data-v2="' + idx + '" data-f="qty" type="number" min="0" step="1" value="' + num(r.qty) + '"></td>';
+    tr += '<td><input data-v2="' + idx + '" data-f="unit" value="' + esc(r.unit || '个') + '"></td>';
+    if (priceOn) tr += '<td><input data-v2="' + idx + '" data-f="price" type="number" min="0" step="0.01" value="' + num(r.price) + '"></td>' +
+      '<td class="st" data-st="' + idx + '_v2">' + fmt(num(r.qty) * num(r.price)) + '</td>' +
+      '<td><input data-v2="' + idx + '" data-f="disc" type="number" min="0" step="0.01" value="' + num(r.disc) + '"></td>';
+    tr += '<td><input data-v2="' + idx + '" data-f="note" value="' + esc(r.note) + '" placeholder="备注"></td>';
+    tr += '<td class="img-cell" data-dropzone="ov2|' + idx + '" data-max="3"><div class="img-grid">' + thumbsHtml(r.img, 'v2|' + idx) + '</div>' +
+      '<button class="img-add" type="button" data-v2img="' + idx + '" style="min-width:34px;height:34px;font-size:11px">＋图</button></td>';
+    tr += '</tr>';
+    return tr;
+  }).join('');
+  const qtySum = rows.reduce((s, r) => s + num(r.qty), 0);
+  const amtSum = rows.reduce((s, r) => s + num(r.qty) * num(r.price), 0);
+  const discSum = rows.reduce((s, r) => s + num(r.disc), 0);
+  const grand = Math.max(0, amtSum + num(o.freight) + num(o.install) - discSum);
+  let tfoot = priceOn
+    ? '<tr><th colspan="4">合计</th><th id="v2_qty">' + qtySum + '</th><th></th>' +
+      '<th id="v2_amount">' + fmt(amtSum) + '</th><th id="v2_disc">' + fmt(discSum) + '</th>' +
+      '<th><input id="o2_install" type="number" min="0" step="0.01" value="' + num(o.install) + '" title="安装" style="width:70%"></th>' +
+      '<th><input id="o2_freight" type="number" min="0" step="0.01" value="' + num(o.freight) + '" title="运费" style="width:70%"></th>' +
+      '<th id="v2_grand">总计：' + fmt(grand) + '</th></tr>'
+    : '<tr><th colspan="3">合计</th><th id="v2_qty">' + qtySum + '</th>' +
+      '<th><input id="o2_install" type="number" min="0" step="0.01" value="' + num(o.install) + '" title="安装" style="width:70%"></th>' +
+      '<th><input id="o2_freight" type="number" min="0" step="0.01" value="' + num(o.freight) + '" title="运费" style="width:70%"></th>' +
+      '<th colspan="2" id="v2_grand">总计：' + fmt(grand) + '</th></tr>';
+  const tbl = $('orderV2Table');
+  tbl.innerHTML = '<thead>' + thead + '</thead><tbody>' + tbody + '</tbody><tfoot>' + tfoot + '</tfoot>';
+  tbl.querySelectorAll('input[data-v2]').forEach(inp => {
+    inp.oninput = () => {
+      const r = o.v2[+inp.dataset.v2]; if (!r) return;
+      const f = inp.dataset.f;
+      r[f] = (f === 'qty' || f === 'price' || f === 'disc') ? num(inp.value) : inp.value;
+      save(); calcOrder();
+    };
+    if (inp.dataset.f === 'name'){
+      inp.onchange = () => {
+        const lib = findLib(inp.value);
+        if (lib){
+          const r = o.v2[+inp.dataset.v2];
+          r.price = lib.price;
+          if (!r.unit || r.unit === '个') r.unit = lib.unit || r.unit;
+          const pi = tbl.querySelector('input[data-v2="' + inp.dataset.v2 + '"][data-f="price"]');
+          if (pi) pi.value = lib.price;
+          const ui = tbl.querySelector('input[data-v2="' + inp.dataset.v2 + '"][data-f="unit"]');
+          if (ui) ui.value = r.unit;
+          save(); calcOrder();
+        }
+      };
+    }
+  });
+  tbl.querySelectorAll('button[data-v2img]').forEach(b => b.onclick = () => {
+    const r = o.v2[+b.dataset.v2img];
+    if (!r.img) r.img = [];
+    pickImgs(r.img, 3, () => { save(); renderOrder(); });
+  });
+  tbl.querySelectorAll('.img-thumb .x[data-px]').forEach(x => x.onclick = () => {
+    if (!confirm('确定删除这张图片？')) return;
+    const [, idx] = x.dataset.px.split('|');
+    const r = o.v2[+idx]; if (!r || !r.img) return;
+    r.img.splice(+x.dataset.i, 1); save(); renderOrder();
+  });
+  const fi = $('o2_freight'), ii = $('o2_install');
+  if (fi) fi.oninput = () => { o.freight = num(fi.value); save(); calcOrder(); };
+  if (ii) ii.oninput = () => { o.install = num(ii.value); save(); calcOrder(); };
+  $('btnV2AddRow').onclick = () => { if (!o.v2) o.v2 = []; o.v2.push(emptyV2()); save(); renderOrder(); };
+  $('btnV2DelRow').onclick = () => {
+    if (!o.v2 || o.v2.length <= 1){ alert('至少保留一行'); return; }
+    if (!confirm('确定删除最后一行？')) return;
+    o.v2.pop(); save(); renderOrder();
+  };
+}
+function calcOrder(){
+  const o = getO();
+  if (orderVer === 2){
+    const t = $('orderV2Table'); if (!t) return;
+    const rows = o.v2 || [];
+    const amtSum = rows.reduce((s, r) => s + num(r.qty) * num(r.price), 0);
+    const discSum = rows.reduce((s, r) => s + num(r.disc), 0);
+    const grand = Math.max(0, amtSum + num(o.freight) + num(o.install) - discSum);
+    t.querySelectorAll('.st[data-st]').forEach(el => {
+      const idx = +el.dataset.st.split('_')[0];
+      const r = rows[idx];
+      el.textContent = fmt(num(r ? r.qty : 0) * num(r ? r.price : 0));
+    });
+    const q = $('v2_qty'); if (q) q.textContent = rows.reduce((s, r) => s + num(r.qty), 0);
+    const a = $('v2_amount'); if (a) a.textContent = fmt(amtSum);
+    const d = $('v2_disc'); if (d) d.textContent = fmt(discSum);
+    const g = $('v2_grand'); if (g) g.textContent = '总计：' + fmt(grand);
+    return;
+  }
+  const t = $('orderV1Table'); if (!t) return;
+  const rows = o.rows || [];
+  t.querySelectorAll('.st[data-st]').forEach(el => {
+    const parts = el.dataset.st.split('_');
+    const idx = +parts[0], g2 = parts[1];
+    const r = rows[idx];
+    el.textContent = fmt(num(r && r[g2] ? r[g2].qty : 0) * num(r && r[g2] ? r[g2].price : 0));
+  });
+  const hSum = rows.reduce((s, r) => s + num(r.h ? r.h.qty : 0) * num(r.h ? r.h.price : 0), 0);
+  const lSum = rows.reduce((s, r) => s + num(r.l ? r.l.qty : 0) * num(r.l ? r.l.price : 0), 0);
+  const sSum = rows.reduce((s, r) => s + num(r.s ? r.s.qty : 0) * num(r.s ? r.s.price : 0), 0);
+  const bSum = rows.reduce((s, r) => s + num(r.b ? r.b.qty : 0) * num(r.b ? r.b.price : 0), 0);
+  const grand = hSum + lSum + sSum + bSum + num(o.freight) + num(o.install);
+  t.querySelectorAll('tfoot [data-ft]').forEach(el => {
+    const k = el.dataset.ft;
+    el.textContent = k === 'grand' ? ('总价 ' + fmt(grand)) :
+      (k === 'h' ? fmt(hSum) : k === 'l' ? fmt(lSum) : k === 's' ? fmt(sSum) : k === 'b' ? fmt(bSum) : k === 'f' ? fmt(num(o.freight)) : fmt(num(o.install)));
+  });
+}
+document.querySelectorAll('.ver-tab').forEach(t => t.onclick = () => {
+  orderVer = +t.dataset.ver;
+  getO().version = orderVer; save();
+  renderOrder();
+});
+document.querySelectorAll('#view-order .sub-tab').forEach(b => b.onclick = () => switchSubOrder(b.dataset.sub));
+$('btnNewOrder').onclick = () => {
+  if (!confirm('新建订单将清空当前订单内容，确定继续？')) return;
+  store.order = emptyOrder(); save(); renderOrder();
+};
+$('btnOrderSave').onclick = () => {
+  save();
+  const o = getO();
+  const n = (orderVer === 2 ? (o.v2 || []).length : (o.rows || []).length);
+  alert('订单已保存' + (n ? '（共' + n + '行明细，云端与本地均已同步）' : ''));
+};
+$('btnOrderPrint').onclick = () => window.print();
+
+/* ===================== 导入 / 导出 ===================== */
+$('btnExportData').onclick = () => {
+  try {
+    ensureIds(store);
+    const imgStore = getImgStore();
+    const clean = extractImages(store, imgStore);
+    setImgStore(imgStore);
+    const full = JSON.parse(JSON.stringify(clean));
+    restoreImages(full, imgStore);
+    const payload = {
+      app: 'bfzy',
+      version: 2,
+      exportedAt: new Date().toISOString(),
+      data: full,
+      imgs: imgStore
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const t = new Date();
+    const stamp = t.getFullYear() + String(t.getMonth()+1).padStart(2,'0') + String(t.getDate()).padStart(2,'0') + '_' +
+                  String(t.getHours()).padStart(2,'0') + String(t.getMinutes()).padStart(2,'0');
+    a.href = url;
+    a.download = '半分纸艺数据备份_' + stamp + '.json';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    alert('已导出数据（含全部图片），可保存到本地或迁移到其他设备。');
+  } catch(e){
+    console.error(e);
+    alert('导出失败：' + (e.message || e));
+  }
+};
+
+$('btnImportData').onclick = () => $('importFileInput').click();
+$('importFileInput').onchange = e => {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const payload = JSON.parse(ev.target.result);
+      let data = payload.data ? payload.data : payload;
+      let imgs = payload.imgs || {};
+      if (data.store) data = data.store;
+
+      if (!confirm('导入将覆盖当前所有数据（云端也会同步），确定继续？')){ e.target.value = ''; return; }
+
+      store = Object.assign(defaultStore(), data);
+      if (!store.sideImgs) store.sideImgs = { budget: [[],[]] };
+
+      const imgStore = Object.assign({}, getImgStore(), imgs);
+      setImgStore(imgStore);
+      ensureIds(store);
+      restoreImages(store, imgStore);
+
+      save();
+
+      syncDatalist();
+      renderSidebar();
+      renderLibrary();
+      renderBudget();
+      renderOrder();
+      if (subQuote === 'quote-rec') renderRecs();
+
+      alert('✅ 导入成功！数据已保存到本地并同步到云端。');
+    } catch(err){
+      console.error(err);
+      alert('导入失败：' + (err.message || '文件格式不正确'));
+    } finally {
+      e.target.value = '';
+    }
+  };
+  reader.readAsText(file);
+};
+
+/* ===================== 初始化 ===================== */
+function init(){
+  syncDatalist();
+  document.querySelector('.top-tab[data-view=quote]').classList.add('active');
+  renderSidebar();
+  renderLibrary();
+  bindBudgetInputs();
+  renderBudget();
+  renderOrder();
+
+  pullFromCloud().then(changed => {
+    if (changed){
+      syncDatalist();
+      renderSidebar();
+      renderLibrary();
+      renderBudget();
+      renderOrder();
+      if (subQuote === 'quote-rec') renderRecs();
+    }
+  });
+}
+init();
+</script>
+</body>
+</html>
