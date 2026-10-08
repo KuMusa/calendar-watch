@@ -2518,7 +2518,7 @@ function renderOrderView() {
         });
       }
 
-      /* ★ 成本明细：材料 / 兼职 / 铁艺 / 运费 / 耗材 / 安装 / 其他 = 总成本 */
+      /* ★ 成本明细：材料 / 兼职 / 餐费 / 铁艺 / 运费 / 耗材 / 安装 / 其他 = 总成本 */
       const costEntry = state.orderGrandTotals[o.order] || {};
       const grand = Number(costEntry.grand_total) || 0;
       const matTotal = Number(costEntry.material_total) || 0;
@@ -2527,6 +2527,17 @@ function renderOrderView() {
       const consumableCost = Number(costEntry.consumable_cost) || 0;
       const installationFee = Number(costEntry.installation_fee) || 0;
       const ptFee = Math.round((o.total / 60) * 15 * 100) / 100;
+
+      // ★ 计算该订单所有日期的分摊餐费合计
+      let mealTotal = 0;
+      if (Array.isArray(o.days)) {
+        o.days.forEach(d => {
+          const alloc = calcMealAllocationForDate(d.date)[o.order] || { total: 0 };
+          mealTotal += Number(alloc.total) || 0;
+        });
+      }
+      mealTotal = Math.round(mealTotal * 100) / 100;
+
       const known = matTotal + ptFee + installFee + shippingFee + consumableCost + installationFee;
       const unknown = Math.max(0, Math.round((grand - known) * 100) / 100);
 
@@ -2541,6 +2552,8 @@ function renderOrderView() {
             <span class="oc-val${matTotal > 0 ? ' green' : ' zero'}">¥${matTotal.toFixed(2)}</span></span>
           <span class="oc-stat"><span class="oc-lbl">💼 兼职</span>
             <span class="oc-val${ptFee > 0 ? ' green' : ' zero'}">¥${ptFee.toFixed(2)}</span></span>
+          <span class="oc-stat"><span class="oc-lbl">🍱 餐费</span>
+            <span class="oc-val${mealTotal > 0 ? ' orange' : ' zero'}">¥${mealTotal.toFixed(2)}</span></span>
           <span class="oc-stat"><span class="oc-lbl">🪡 铁艺</span>
             <span class="oc-val${installFee > 0 ? ' orange' : ' zero'}">¥${installFee.toFixed(2)}</span></span>
           <span class="oc-stat"><span class="oc-lbl">🚚 运费</span>
